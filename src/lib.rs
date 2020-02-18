@@ -1,9 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
+use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, traits::Currency, traits::ExistenceRequirement::AllowDeath};
 use frame_system::{self as system, ensure_signed};
 use sp_std::vec::Vec;
 use codec::{Decode, Encode};
+
+pub trait Trait: system::Trait {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    /// The currency mechanism.
+    type Currency: Currency<Self::AccountId>;
+}
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 pub struct Counter(u32);
@@ -13,10 +19,6 @@ impl Counter {
     fn increment(&mut self) {
         self.0 = self.0 + 1;
     }
-}
-
-pub trait Trait: system::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 decl_event!(
@@ -31,6 +33,8 @@ decl_storage!(
     trait Store for Module<T: Trait> as Bridge {
         EmitterAddress get(emitter_address): Vec<u8>;
         Chains get(fn chains): map Vec<u8> => Counter;
+
+        EndowedAccount get(fn endowed_acct) config(): T::AccountId;
     }
 );
 
@@ -69,6 +73,14 @@ decl_module!(
             <Chains>::insert(&dest_id, counter);
             Ok(())
         }
+
+        // TODO: Should use correct amount type
+        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let source: T::AccountId = <EndowedAccount<T>>::get();
+            T::Currency::transfer(&source, &who, amount.into(), AllowDeath)?;
+            Ok(())
+        }
     }
 );
 
@@ -82,16 +94,16 @@ mod tests {
         traits::{BlakeTwo256, IdentityLookup},
         Perbill,
     };
-    use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
-
-    impl_outer_origin! {
-        pub enum Origin for Test {}
-    }
+    use frame_support::{assert_err, assert_ok, impl_outer_origin, impl_outer_event, parameter_types, weights::Weight};
+    use frame_system::{self as system};
+    use pallet_balances as balances;
 
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
 
-    type Bridge = super::Module<Test>;
+    impl_outer_origin! {
+        pub enum Origin for Test {}
+    }
 
     parameter_types! {
         pub const BlockHashCount: u64 = 250;
@@ -99,6 +111,9 @@ mod tests {
         pub const MaximumBlockLength: u32 = 2 * 1024;
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
+
+    type Bridge = super::Module<Test>;
+    type Balances = pallet_balances::Module<Test>;
 
     impl frame_system::Trait for Test {
         type Origin = Origin;
@@ -119,14 +134,48 @@ mod tests {
         type ModuleToIndex = ();
     }
 
+    impl pallet_balances::Trait for Test {
+        type Balance = u64;
+        type Event = ();
+        type DustRemoval = ();
+        type ExistentialDeposit = ();
+        type OnFreeBalanceZero = ();
+        type OnNewAccount = ();
+        type TransferPayment = ();
+        type TransferFee = ();
+        type CreationFee = ();
+    }
+
     impl Trait for Test {
         type Event = ();
+        type Currency = Balances;
     }
+
+    // Bridge account and starting balance
+    const ENDOWED_ID: u64 = 0x1;
+    const ENDOWED_BALANCE: u64 = 100;
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let t = frame_system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
+
+        t.into()
+    }
+
+    fn new_test_ext_endowed() -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let _ = balances::GenesisConfig::<Test> {
+            balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],
+            vesting: vec![],
+        }.assimilate_storage(&mut t).unwrap();
+
+        let _ = GenesisConfig::<Test> {
+            endowed_acct: 1,
+        }.assimilate_storage(&mut t).unwrap();
 
         t.into()
     }
@@ -164,6 +213,15 @@ mod tests {
 
             assert_ok!(Bridge::whitelist_chain(Origin::signed(1), chain_id));
             assert_err!(Bridge::transfer_asset(Origin::signed(1), bad_dest_id, to, token_id, metadata), "Chain ID not whitelisted");
+        })
+    }
+
+    #[test]
+    fn transfer() {
+        new_test_ext_endowed().execute_with( || {
+            assert!(Bridge::endowed_acct() == ENDOWED_ID);
+            assert!(Balances::free_balance(&ENDOWED_ID) == ENDOWED_BALANCE);
+            assert_ok!(Bridge::transfer());
         })
     }
 }

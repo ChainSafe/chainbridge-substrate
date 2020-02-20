@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, traits::Currency,
     traits::ExistenceRequirement::AllowDeath,
@@ -15,16 +14,6 @@ pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-pub struct Counter(u32);
-
-/// Tracks deposit count for an associated chain
-impl Counter {
-    fn increment(&mut self) {
-        self.0 += 1;
-    }
 }
 
 decl_event!(
@@ -48,15 +37,9 @@ decl_storage!(
 
         Chains: map
             hasher(blake2_256) Vec<u8>
-            => Option<Counter>;
+            => Option<u32>;
 
-        // See https://github.com/paritytech/substrate/blob/5135844eb77eb5dd76948a535146c0ad1df6bd0f/frame/balances/src/lib.rs#L373
-        // And https://github.com/paritytech/substrate/blob/ddb309ae7c70e5e51a60879af18819cf28be4a32/frame/indices/src/lib.rs#L93
         EndowedAccount get(fn endowed) config(): T::AccountId;
-        // add_extra_genesis {
-        //     config(endowed_account): T::AccountId;
-        // }
-
     }
 );
 
@@ -77,7 +60,7 @@ decl_module!(
         pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
             // TODO: Limit access
             ensure_signed(origin)?;
-            Chains::insert(&id, Counter(0));
+            Chains::insert(&id, 0);
             Ok(())
         }
 
@@ -88,9 +71,9 @@ decl_module!(
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
                 // Increment counter and store
-                counter.increment();
-                Chains::insert(&dest_id, counter.clone());
-                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.0, to, token_id, metadata));
+                counter += 1;
+                Chains::insert(&dest_id, counter);
+                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter, to, token_id, metadata));
                 Ok(())
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?

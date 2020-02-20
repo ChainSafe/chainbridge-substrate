@@ -4,7 +4,6 @@ use super::*;
 use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types, weights::Weight,
 };
-use pallet_balances::AccountData;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -12,7 +11,7 @@ use sp_runtime::{
     Perbill,
 };
 
-use crate::{self as bridge, Module, Trait};
+use crate::{self as bridge, Trait};
 use frame_system as system;
 
 #[derive(Clone, Eq, PartialEq)]
@@ -31,16 +30,16 @@ impl_outer_event! {
 }
 
 impl_outer_dispatch! {
-        pub enum Call for Test where origin: Origin {
-            pallet_balances::Balances,
-        }
+    pub enum Call for Test where origin: Origin {
+        pallet_balances::Balances,
+    }
 }
 
 parameter_types! {
-        pub const BlockHashCount: u64 = 250;
-        pub const MaximumBlockWeight: Weight = 1024;
-        pub const MaximumBlockLength: u32 = 2 * 1024;
-        pub const AvailableBlockRatio: Perbill = Perbill::one();
+    pub const BlockHashCount: u64 = 250;
+    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockLength: u32 = 2 * 1024;
+    pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
 impl frame_system::Trait for Test {
@@ -66,7 +65,7 @@ impl frame_system::Trait for Test {
 }
 
 parameter_types! {
-        pub const ExistentialDeposit: u64 = 1;
+    pub const ExistentialDeposit: u64 = 1;
 }
 
 impl pallet_balances::Trait for Test {
@@ -106,14 +105,14 @@ pub fn new_test_ext_endowed() -> sp_io::TestExternalities {
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],
     }
-    .assimilate_storage(&mut t)
-    .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
     GenesisConfig::<Test> {
         endowed: ENDOWED_ID,
     }
-    .assimilate_storage(&mut t)
-    .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
     t.into()
 }

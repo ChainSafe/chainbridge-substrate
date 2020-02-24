@@ -4,11 +4,18 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, traits::Currency,
     traits::ExistenceRequirement::AllowDeath,
 };
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_std::vec::Vec;
+use codec::{Decode, Encode};
 
 mod mock;
 mod tests;
+
+#[derive(Encode, Decode, Clone)]
+struct TxCount {
+    recv: u32,
+    sent: u32,
+}
 
 pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -37,7 +44,7 @@ decl_storage!(
 
         Chains: map
             hasher(blake2_256) Vec<u8>
-            => Option<u32>;
+            => Option<TxCount>;
 
         EndowedAccount get(fn endowed) config(): T::AccountId;
     }
@@ -51,7 +58,7 @@ decl_module!(
         /// Sets the address used to identify this chain
         pub fn set_address(origin, addr: Vec<u8>) -> DispatchResult {
             // TODO: Limit access
-            ensure_signed(origin)?;
+            ensure_root(origin)?;
             EmitterAddress::put(addr);
             Ok(())
         }
@@ -59,21 +66,21 @@ decl_module!(
         /// Enables a chain ID as a destination for a bridge transfer
         pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
             // TODO: Limit access
-            ensure_signed(origin)?;
-            Chains::insert(&id, 0);
+            ensure_root(origin)?;
+            Chains::insert(&id, TxCount { recv: 0, sent: 0 });
             Ok(())
         }
 
         /// Commits an asset transfer to the chain as an event to be acted on by the bridge.
-        pub fn transfer_asset(origin, dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
+        pub fn receive_asset(origin, dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             // TODO: Limit access
-            ensure_signed(origin)?;
+            ensure_root(origin)?;
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
                 // Increment counter and store
-                counter += 1;
-                Chains::insert(&dest_id, counter);
-                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter, to, token_id, metadata));
+                counter.recv += 1;
+                Chains::insert(&dest_id, counter.clone());
+                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.recv, to, token_id, metadata));
                 Ok(())
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?
@@ -82,7 +89,7 @@ decl_module!(
 
         // TODO: Should use correct amount type
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            ensure_signed(origin)?;
+            ensure_root(origin)?;
             let source: T::AccountId = <EndowedAccount<T>>::get();
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())

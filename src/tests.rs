@@ -67,3 +67,15 @@ fn transfer() {
         assert_eq!(Balances::free_balance(2), 10);
     })
 }
+
+
+#[test]
+fn add_validator() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(Bridge::add_validator(Origin::ROOT, 1));
+        assert_err!(Bridge::add_validator(Origin::ROOT, 1), Error::<Test>::ValidatorAlreadyExists);
+
+        assert_ok!(Bridge::remove_validator(Origin::ROOT, 1));
+        assert_err!(Bridge::remove_validator(Origin::ROOT, 1), Error::<Test>::ValidatorInvalid);
+    })
+}

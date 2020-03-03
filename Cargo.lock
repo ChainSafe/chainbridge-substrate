@@ -184,6 +184,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-collective",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -743,6 +744,21 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-collective"
+version = "2.0.0-alpha.1"
+source = "git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972#7c751574d8c53108e78440bfa5dffb80ab644972"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",

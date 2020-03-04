@@ -14,7 +14,7 @@ use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
 use codec::{Decode, Encode};
-use sp_core::U256;
+use sp_core::{blake2_256, U256};
 
 mod mock;
 mod tests;
@@ -33,18 +33,19 @@ struct TxCount {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct TransferProposal<AccountId, Call> {
+pub struct ProposalVotes<AccountId, Hash> {
     votes_for: Vec<AccountId>,
     votes_against: Vec<AccountId>,
-    call: Box<Call>,
+    // TODO: If hash matches the key in the map, we can simplify logic below to not need deposit_id when inserting/updating
+    hash: Hash,
 }
 
-impl<AccountId, Call> TransferProposal<AccountId, Call> {
-    fn new(call: Box<Call>) -> Self {
+impl<AccountId, Hash> ProposalVotes<AccountId, Hash> {
+    fn new(hash: Hash) -> Self {
         Self {
             votes_for: Vec::new(),
             votes_against: Vec::new(),
-            call,
+            hash,
         }
     }
 }
@@ -111,9 +112,15 @@ decl_storage! {
 
         pub Validators get(fn validators): map hasher(blake2_256) T::AccountId => bool;
 
+        /// All known proposals.
+        /// The key is the hash of the call and the deposit ID, to ensure it's unique.
+        pub Votes get(fn votes):
+            map hasher(blake2_256) T::Hash
+            => Option<ProposalVotes<T::AccountId, T::Hash>>;
+
         pub Proposals get(fn proposals):
-            map hasher(blake2_256) T::Hash =>
-            Option<TransferProposal<T::AccountId, <T as Trait>::Proposal>>;
+            map hasher(blake2_256) T::Hash
+            => Option<<T as Trait>::Proposal>;
     }
     add_extra_genesis {
         config(validators): Vec<T::AccountId>;
@@ -128,23 +135,27 @@ decl_module! {
 
         /// Sets the address used to identify this chain
         pub fn set_address(origin, addr: Vec<u8>) -> DispatchResult {
-            // TODO: Limit access
-            Self::ensure_validator(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+
             EmitterAddress::put(addr);
             Ok(())
         }
 
         /// Enables a chain ID as a destination for a bridge transfer
         pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
-            // TODO: Limit access
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+
             Chains::insert(&id, TxCount { recv: 0, sent: 0 });
             Ok(())
         }
 
         /// Adds a new validator to the set. Errors if validator already exists.
         pub fn add_validator(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+
             ensure!(!Self::is_validator(&v), Error::<T>::ValidatorAlreadyExists);
             <Validators<T>>::insert(&v, true);
             Self::deposit_event(RawEvent::ValidatorAdded(v));
@@ -153,39 +164,41 @@ decl_module! {
 
         /// Removes an existing validator from the set. Errors if validator doesn't exist.
         pub fn remove_validator(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(Self::is_validator(&v), Error::<T>::ValidatorInvalid);
+            let who = ensure_signed(origin)?;
+            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
 
+            ensure!(Self::is_validator(&v), Error::<T>::ValidatorInvalid);
             <Validators<T>>::remove(&v);
             Self::deposit_event(RawEvent::ValidatorRemoved(v));
             Ok(())
         }
-        // TODO: Is the hash needed?
-        pub fn create_proposal(origin, prop_id: T::Hash, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+
+        pub fn create_proposal(origin, hash: T::Hash, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+
             // Make sure proposal doesn't already exist
-            ensure!(!<Proposals<T>>::contains_key(prop_id), Error::<T>::ProposalAlreadyExists);
+            ensure!(!<Votes<T>>::contains_key(hash), Error::<T>::ProposalAlreadyExists);
 
-            let proposal = TransferProposal::new(call);
-
-            <Proposals<T>>::insert(prop_id, proposal);
+            let proposal = ProposalVotes::new(hash);
+            <Votes<T>>::insert(hash, proposal.clone());
+            <Proposals<T>>::insert(hash, call);
 
             // Creating a proposal also votes for it
-            Self::vote_for(who, prop_id)
+            Self::vote_for(who, proposal)
         }
 
-        pub fn vote(origin, prop_id: T::Hash, in_favour: bool) -> DispatchResult {
+        pub fn vote(origin, hash: T::Hash, in_favour: bool) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
 
             // Check if proposal exists
-            if let Some(votes) = <Proposals<T>>::get(prop_id) {
+            if let Some(votes) = <Votes<T>>::get(hash) {
                 // Vote if they haven't already
                 if in_favour {
-                    Self::vote_for(who, prop_id)?
+                    Self::vote_for(who, votes)?
                 } else {
-                    Self::vote_against(who, prop_id)?
+                    Self::vote_against(who, votes)?
                 }
             } else {
                 Err(Error::<T>::ProposalDoesNotExist)?
@@ -218,34 +231,12 @@ decl_module! {
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }
-
-        pub fn mock_transfer(origin, n: u32) -> DispatchResult {
-            let mock_data = Vec::new();
-            Self::deposit_event(RawEvent::AssetTransfer(
-                mock_data.clone(),
-                n,
-                mock_data.clone(),
-                mock_data.clone(),
-                mock_data.clone(),
-            ));
-            Ok(())
-        }
     }
-
 }
 
 /// Main module declaration.
 /// Here we should include non-state changing public funcs
 impl<T: Trait> Module<T> {
-    // TODO: Rename
-    fn ensure_validator(origin: T::Origin) -> DispatchResult {
-        // T::ValidatorOrigin::try_origin(origin)
-        //     .map(|_| ())
-        //     .or_else(ensure_root)?;
-        ensure_root(origin)?;
-        Ok(())
-    }
-
     pub fn is_validator(who: &T::AccountId) -> bool {
         Self::validators(who)
     }
@@ -259,16 +250,19 @@ impl<T: Trait> Module<T> {
     }
 
     /// Note: Existence of proposal must be checked before calling
-    fn vote_for(who: T::AccountId, prop_id: T::Hash) -> DispatchResult {
-        let mut prop = <Proposals<T>>::get(&prop_id).unwrap();
-        if !prop.votes_for.contains(&who) {
-            prop.votes_for.push(who.clone());
-            <Proposals<T>>::insert(&prop_id, prop.clone());
-            Self::deposit_event(RawEvent::VoteFor(prop_id.clone(), who.clone()));
+    fn vote_for(
+        who: T::AccountId,
+        mut votes: ProposalVotes<T::AccountId, T::Hash>,
+    ) -> DispatchResult {
+        //let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
+        if !votes.votes_for.contains(&who) {
+            votes.votes_for.push(who.clone());
+            <Votes<T>>::insert(votes.hash, votes.clone());
+            Self::deposit_event(RawEvent::VoteFor(votes.hash, who.clone()));
 
-            if prop.votes_for.len() == <ValidatorThreshold>::get() as usize {
-                Self::finalize_transfer(prop_id)?
-            } else if prop.votes_for.len() > <ValidatorThreshold>::get() as usize {
+            if votes.votes_for.len() == <ValidatorThreshold>::get() as usize {
+                Self::finalize_transfer(votes)?
+            } else if votes.votes_for.len() > <ValidatorThreshold>::get() as usize {
                 Err(Error::<T>::ProposalAlreadyComplete)?
             }
             Ok(())
@@ -278,15 +272,18 @@ impl<T: Trait> Module<T> {
     }
 
     /// Note: Existence of proposal must be checked before calling
-    fn vote_against(who: T::AccountId, prop_id: T::Hash) -> DispatchResult {
-        let mut prop = <Proposals<T>>::get(&prop_id).unwrap();
-        if !prop.votes_against.contains(&who) {
-            prop.votes_against.push(who.clone());
-            <Proposals<T>>::insert(&prop_id, prop.clone());
-            Self::deposit_event(RawEvent::VoteAgainst(prop_id.clone(), who.clone()));
+    fn vote_against(
+        who: T::AccountId,
+        mut votes: ProposalVotes<T::AccountId, T::Hash>,
+    ) -> DispatchResult {
+        // let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
+        if !votes.votes_against.contains(&who) {
+            votes.votes_against.push(who.clone());
+            <Votes<T>>::insert(votes.hash, votes.clone());
+            Self::deposit_event(RawEvent::VoteAgainst(votes.hash, who.clone()));
 
-            if prop.votes_against.len() > <ValidatorThreshold>::get() as usize {
-                Self::cancel_transfer(prop_id)?
+            if votes.votes_against.len() > <ValidatorThreshold>::get() as usize {
+                Self::cancel_transfer(votes.hash)?
             }
             Ok(())
         } else {
@@ -294,13 +291,13 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn finalize_transfer(prop_id: T::Hash) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSuceeded(prop_id));
-        let prop = <Proposals<T>>::get(prop_id).unwrap();
-        let result = prop.call.dispatch(frame_system::RawOrigin::Root.into());
+    fn finalize_transfer(votes: ProposalVotes<T::AccountId, T::Hash>) -> DispatchResult {
+        Self::deposit_event(RawEvent::ProposalSuceeded(votes.hash));
+        let prop = <Proposals<T>>::get(votes.hash).unwrap();
+        let result = prop.dispatch(frame_system::RawOrigin::Root.into());
         match result {
             Ok(res) => Ok(res),
-            Err(e) => Err(Error::<T>::DebugInnerCallFailed.into()),
+            Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
         }
     }
 

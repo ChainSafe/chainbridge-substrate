@@ -6,8 +6,8 @@ use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, ord_parameter_types, parameter_types,
     weights::Weight,
 };
-use frame_system as system;
 use frame_system::EnsureSignedBy;
+use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -85,12 +85,12 @@ frame_support::construct_runtime!(
     }
 );
 
-// Bridge account and starting balance
 pub const ENDOWED_ID: u64 = 0x1;
-pub const ENDOWED_BALANCE: u64 = 100;
 pub const VALIDATOR_A: u64 = 0x2;
 pub const VALIDATOR_B: u64 = 0x3;
 pub const VALIDATOR_C: u64 = 0x4;
+pub const USER: u64 = 0x4;
+pub const ENDOWED_BALANCE: u64 = 100;
 
 pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     GenesisConfig {
@@ -106,15 +106,4 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     .build_storage()
     .unwrap()
     .into()
-}
-
-fn last_event() -> Event {
-    system::Module::<Test>::events()
-        .pop()
-        .map(|e| e.event)
-        .expect("Event expected")
-}
-
-pub fn expect_event<E: Into<Event>>(e: E) {
-    assert_eq!(last_event(), e.into());
 }

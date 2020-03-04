@@ -1,5 +1,5 @@
 [package]
-name = 'chainbridge-substrate'
+name = 'chainbridge'
 version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'

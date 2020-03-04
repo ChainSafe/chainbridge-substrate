@@ -1,3 +1,4 @@
+// Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
@@ -14,7 +15,6 @@ use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
 use codec::{Decode, Encode};
-use sp_core::{blake2_256, U256};
 
 mod mock;
 mod tests;

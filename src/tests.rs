@@ -2,7 +2,7 @@
 
 use super::mock::*;
 use super::*;
-use frame_support::{assert_ok, assert_noop};
+use frame_support::{assert_noop, assert_ok};
 use sp_core::{blake2_256, H256};
 
 #[test]
@@ -69,27 +69,35 @@ fn transfer() {
     })
 }
 
-
 #[test]
 fn add_remove_validator() {
     new_test_ext(1).execute_with(|| {
         // Already exists
-        assert_noop!(Bridge::add_validator(Origin::ROOT, VALIDATOR_A), Error::<Test>::ValidatorAlreadyExists);
+        assert_noop!(
+            Bridge::add_validator(Origin::ROOT, VALIDATOR_A),
+            Error::<Test>::ValidatorAlreadyExists
+        );
 
         // Errors if added twice
         assert_ok!(Bridge::add_validator(Origin::ROOT, 99));
         expect_event(RawEvent::ValidatorAdded(99));
-        assert_noop!(Bridge::add_validator(Origin::ROOT, 99), Error::<Test>::ValidatorAlreadyExists);
+        assert_noop!(
+            Bridge::add_validator(Origin::ROOT, 99),
+            Error::<Test>::ValidatorAlreadyExists
+        );
 
         // Confirm removal
         assert_ok!(Bridge::remove_validator(Origin::ROOT, 99));
         expect_event(RawEvent::ValidatorRemoved(99));
-        assert_noop!(Bridge::remove_validator(Origin::ROOT, 99), Error::<Test>::ValidatorInvalid);
+        assert_noop!(
+            Bridge::remove_validator(Origin::ROOT, 99),
+            Error::<Test>::ValidatorInvalid
+        );
     })
 }
 
-fn make_proposal(value: u64) -> mock::Call {
-    mock::Call::System(frame_system::Call::remark(value.encode()))
+fn make_proposal(value: u32) -> mock::Call {
+    mock::Call::Bridge(crate::Call::mock_transfer(value))
 }
 
 #[test]
@@ -102,7 +110,11 @@ fn create_transfer_proposal() {
         assert_eq!(Bridge::validator_threshold(), 2);
 
         // Create proposal (& vote)
-        assert_ok!(Bridge::create_proposal(Origin::signed(VALIDATOR_A), prop_id.clone(), Box::new(call.clone())));
+        assert_ok!(Bridge::create_proposal(
+            Origin::signed(VALIDATOR_A),
+            prop_id.clone(),
+            Box::new(call.clone())
+        ));
         expect_event(RawEvent::VoteFor(prop_id, VALIDATOR_A));
         let prop = Bridge::proposals(prop_id).unwrap();
         let expected = TransferProposal {

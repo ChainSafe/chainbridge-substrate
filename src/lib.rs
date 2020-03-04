@@ -1,17 +1,20 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::prelude::*;
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, Parameter,
-    traits::{ExistenceRequirement::AllowDeath, Currency}, ensure,
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::DispatchResult,
+    ensure,
+    traits::{Currency, ExistenceRequirement::AllowDeath},
     weights::GetDispatchInfo,
+    Parameter,
 };
-use frame_system::{self as system, ensure_signed, ensure_root};
-use sp_runtime::{RuntimeDebug, ModuleId};
-use sp_runtime::traits::{EnsureOrigin, Dispatchable};
+use frame_system::{self as system, ensure_root, ensure_signed};
+use sp_runtime::traits::{Dispatchable, EnsureOrigin};
+use sp_runtime::{ModuleId, RuntimeDebug};
+use sp_std::prelude::*;
 
+use codec::{Decode, Encode};
 use sp_core::U256;
-use codec::{Encode, Decode};
 
 mod mock;
 mod tests;
@@ -21,7 +24,6 @@ mod tests;
 // 		MODULE_ID.into_account()
 // 	}
 const MODULE_ID: ModuleId = ModuleId(*b"py/bridg");
-
 
 /// Tracks the transfer in/out of each respective chain
 #[derive(Encode, Decode, Clone, Default)]
@@ -54,9 +56,7 @@ pub trait Trait: system::Trait {
     /// The origin used to manage who can modify the bridge configuration
     // type ValidatorOrigin: EnsureOrigin<Self::Origin>; // + From<frame_system::RawOrigin<Self>>;
     // type TransferCall: Parameter + Dispatchable<Origin=Self::ValidatorOrigin> + GetDispatchInfo;
-    type Proposal: Parameter + Dispatchable<Origin=Self::Origin>;
-
-    // type Origin: From<RawOrigin<Self::AccountId>>;
+    type Proposal: Parameter + Dispatchable<Origin = Self::Origin>;
 }
 
 decl_event! {
@@ -68,27 +68,34 @@ decl_event! {
         AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
         ValidatorAdded(AccountId),
         ValidatorRemoved(AccountId),
-        /// Validator has created new proposal
-        // ProposalCreated(Hash, AccountId),
+
         VoteFor(Hash, AccountId),
         VoteAgainst(Hash, AccountId),
+
         ProposalSuceeded(Hash),
         ProposalFailed(Hash),
     }
 }
 
+// TODO: Pass params to errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
+        /// Validator already in set
         ValidatorAlreadyExists,
         /// Provided accountId is not a validator
         ValidatorInvalid,
+        /// Validator has already submitted some vote for this proposal
         ValidatorAlreadyVoted,
-
+        /// A proposal with these parameters has already been submitted
         ProposalAlreadyExists,
+        /// No proposal with the ID was found
         ProposalDoesNotExist,
+        /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
+
+        DebugInnerCallFailed,
     }
 }
 
@@ -211,6 +218,18 @@ decl_module! {
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }
+
+        pub fn mock_transfer(origin, n: u32) -> DispatchResult {
+            let mock_data = Vec::new();
+            Self::deposit_event(RawEvent::AssetTransfer(
+                mock_data.clone(),
+                n,
+                mock_data.clone(),
+                mock_data.clone(),
+                mock_data.clone(),
+            ));
+            Ok(())
+        }
     }
 
 }
@@ -227,9 +246,9 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-	pub fn is_validator(who: &T::AccountId) -> bool {
-		Self::validators(who)
-	}
+    pub fn is_validator(who: &T::AccountId) -> bool {
+        Self::validators(who)
+    }
 
     fn initialize_validators(validators: &[T::AccountId]) {
         if !validators.is_empty() {
@@ -278,8 +297,11 @@ impl<T: Trait> Module<T> {
     fn finalize_transfer(prop_id: T::Hash) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalSuceeded(prop_id));
         let prop = <Proposals<T>>::get(prop_id).unwrap();
-        // prop.call.dispatch(frame_system::RawOrigin::Root.into());
-        Ok(())
+        let result = prop.call.dispatch(frame_system::RawOrigin::Root.into());
+        match result {
+            Ok(res) => Ok(res),
+            Err(e) => Err(Error::<T>::DebugInnerCallFailed.into()),
+        }
     }
 
     fn cancel_transfer(prop_id: T::Hash) -> DispatchResult {
@@ -287,23 +309,4 @@ impl<T: Trait> Module<T> {
         Self::deposit_event(RawEvent::ProposalFailed(prop_id));
         Ok(())
     }
-
-    fn mock_transfer(n: u32) -> DispatchResult {
-        let mock_data = Vec::new();
-        Self::deposit_event(RawEvent::AssetTransfer(mock_data.clone(), n, mock_data.clone(), mock_data.clone(), mock_data.clone()));
-        Ok(())
-    }
 }
-
-// /// Simple ensure origin struct to filter for the founder account.
-// pub struct EnsureValidator<T>(sp_std::marker::PhantomData<T>);
-// impl<T: Trait> EnsureOrigin<T::Origin> for EnsureValidator<T> {
-//     type Success = T::AccountId;
-//     fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
-//         o.into().and_then(|o|
-//             match (o, EndowedAccount::<T>::get()) {
-//                 (system::RawOrigin::Signed(ref who), ref f) if who == f => Ok(who.clone()),
-//                 (r, _) => Err(T::Origin::from(r)),
-//         })
-//     }
-// }

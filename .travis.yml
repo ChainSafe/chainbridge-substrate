@@ -22,7 +22,9 @@ jobs:
     name: Run runtime tests
     script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=runtime-test ./scripts/ci.sh
   - name: Build (WASM and native)
-    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build-client ./scripts/ci.sh
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build ./scripts/ci.sh
+  - name: Cargo fmt
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=fmt ./scripts/ci.sh
 
 addons:
   apt:

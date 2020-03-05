@@ -23,11 +23,16 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	"build-client")
+	"build")
 		cargo build --release --locked "$@"
 		;;
 
 	"runtime-test")
 		cargo test -p chainbridge
 		;;
+
+  "fmt")
+    rustup component add rustfmt
+    cargo fmt --all -- --check
+    ;;
 esac

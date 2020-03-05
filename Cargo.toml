@@ -3,7 +3,6 @@ name = 'chainbridge'
 version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'
-build = "build.rs"
 
 [dependencies]
 # third-party dependencies
@@ -14,12 +13,15 @@ serde = { version = "1.0.102", optional = true }
 sp-std = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 sp-runtime = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 sp-io = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
+sp-core = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 
 # frame dependencies
 frame-support = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 frame-system = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 
 pallet-balances = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972"}
+
+
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972" }
@@ -31,6 +33,7 @@ std = [
 	"sp-std/std",
 	"sp-runtime/std",
     "sp-io/std",
+    "sp-core/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-balances/std",

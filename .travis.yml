@@ -1,0 +1,42 @@
+language: rust
+
+before_cache:
+- chmod -R a+r $HOME/.cargo
+
+cache: cargo
+
+branches:
+  only:
+  - master
+
+env:
+  global:
+  - RUST_BACKTRACE=1
+
+before_install:
+- df -h
+
+jobs:
+  include:
+  - stage: Test and build
+    name: Run runtime tests
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=runtime-test ./scripts/ci.sh
+  - name: Build (WASM and native)
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build ./scripts/ci.sh
+  - name: Cargo fmt
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=fmt ./scripts/ci.sh
+
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
+    - cmake
+    - gcc
+    - binutils-dev
+    - libiberty-dev
+
+after_script:
+- df -h
+

@@ -6,11 +6,10 @@ use frame_support::{
     dispatch::DispatchResult,
     ensure,
     traits::{Currency, ExistenceRequirement::AllowDeath},
-    weights::GetDispatchInfo,
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{Dispatchable, EnsureOrigin};
+use sp_runtime::traits::{Dispatchable, EnsureOrigin, AccountIdConversion};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -19,10 +18,6 @@ use codec::{Decode, Encode};
 mod mock;
 mod tests;
 
-// TODO: Could use as "endowed account":
-// 	pub fn account_id() -> T::AccountId {
-// 		MODULE_ID.into_account()
-// 	}
 const MODULE_ID: ModuleId = ModuleId(*b"py/bridg");
 
 /// Tracks the transfer in/out of each respective chain
@@ -124,7 +119,14 @@ decl_storage! {
     }
     add_extra_genesis {
         config(validators): Vec<T::AccountId>;
-        build(|config| Module::<T>::initialize_validators(&config.validators));
+        build(|config| {
+            Module::<T>::initialize_validators(&config.validators);
+			// Create Bridge account
+			// let _ = T::Currency::make_free_balance_be(
+			// 	&<Module<T>>::account_id(),
+			// 	T::Currency::minimum_balance(),
+			// );
+		});
     }
 }
 
@@ -249,12 +251,15 @@ impl<T: Trait> Module<T> {
         }
     }
 
+	pub fn account_id() -> T::AccountId {
+		MODULE_ID.into_account()
+	}
+
     /// Note: Existence of proposal must be checked before calling
     fn vote_for(
         who: T::AccountId,
         mut votes: ProposalVotes<T::AccountId, T::Hash>,
     ) -> DispatchResult {
-        //let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
         if !votes.votes_for.contains(&who) {
             votes.votes_for.push(who.clone());
             <Votes<T>>::insert(votes.hash, votes.clone());
@@ -276,7 +281,6 @@ impl<T: Trait> Module<T> {
         who: T::AccountId,
         mut votes: ProposalVotes<T::AccountId, T::Hash>,
     ) -> DispatchResult {
-        // let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
         if !votes.votes_against.contains(&who) {
             votes.votes_against.push(who.clone());
             <Votes<T>>::insert(votes.hash, votes.clone());
@@ -294,11 +298,11 @@ impl<T: Trait> Module<T> {
     fn finalize_transfer(votes: ProposalVotes<T::AccountId, T::Hash>) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalSuceeded(votes.hash));
         let prop = <Proposals<T>>::get(votes.hash).unwrap();
-        let result = prop.dispatch(frame_system::RawOrigin::Root.into());
-        match result {
-            Ok(res) => Ok(res),
-            Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
-        }
+        prop.dispatch(frame_system::RawOrigin::Root.into())
+        // match result {
+        //     Ok(res) => Ok(res),
+        //     Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
+        // }
     }
 
     fn cancel_transfer(prop_id: T::Hash) -> DispatchResult {

@@ -43,8 +43,8 @@ pub struct ProposalVotes<AccountId, Hash> {
 impl<AccountId, Hash> ProposalVotes<AccountId, Hash> {
     fn new(hash: Hash) -> Self {
         Self {
-            votes_for: Vec::new(),
-            votes_against: Vec::new(),
+            votes_for: vec![],
+            votes_against: vec![],
             hash,
         }
     }

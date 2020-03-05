@@ -62,13 +62,19 @@ decl_event! {
     {
         // dest_id, deposit_id, to, token_id, metadata
         AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// Valdiator added to set
         ValidatorAdded(AccountId),
+        /// Validator removed from set
         ValidatorRemoved(AccountId),
 
+        /// Vote submitted in favour of proposal
         VoteFor(Hash, AccountId),
+        /// Vot submitted against proposal
         VoteAgainst(Hash, AccountId),
 
+        /// Voting successful for a proposal
         ProposalSuceeded(Hash),
+        /// Voting rejected a proposal
         ProposalFailed(Hash),
     }
 }

@@ -20,9 +20,9 @@ jobs:
   include:
   - stage: Test and build
     name: Run runtime tests
-    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=runtime-test travis_wait 180 ./scripts/ci.sh
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=runtime-test ./scripts/ci.sh
   - name: Build (WASM and native)
-    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build-client travis_wait 180 ./cscripts/ci.sh
+    script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build-client ./scripts/ci.sh
 
 addons:
   apt:

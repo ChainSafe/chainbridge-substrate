@@ -9,7 +9,7 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{Dispatchable, EnsureOrigin, AccountIdConversion};
+use sp_runtime::traits::{Dispatchable, AccountIdConversion};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -18,7 +18,7 @@ use codec::{Decode, Encode};
 mod mock;
 mod tests;
 
-const MODULE_ID: ModuleId = ModuleId(*b"py/bridg");
+const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
 /// Tracks the transfer in/out of each respective chain
 #[derive(Encode, Decode, Clone, Default)]
@@ -49,9 +49,7 @@ pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
-    /// The origin used to manage who can modify the bridge configuration
-    // type ValidatorOrigin: EnsureOrigin<Self::Origin>; // + From<frame_system::RawOrigin<Self>>;
-    // type TransferCall: Parameter + Dispatchable<Origin=Self::ValidatorOrigin> + GetDispatchInfo;
+    /// Proposed dispatchable call
     type Proposal: Parameter + Dispatchable<Origin = Self::Origin>;
 }
 
@@ -73,7 +71,7 @@ decl_event! {
         VoteAgainst(Hash, AccountId),
 
         /// Voting successful for a proposal
-        ProposalSuceeded(Hash),
+        ProposalSucceeded(Hash),
         /// Voting rejected a proposal
         ProposalFailed(Hash),
     }
@@ -234,7 +232,8 @@ decl_module! {
 
         // TODO: Should use correct amount type
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
             let source: T::AccountId = <EndowedAccount<T>>::get();
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
@@ -245,10 +244,12 @@ decl_module! {
 /// Main module declaration.
 /// Here we should include non-state changing public funcs
 impl<T: Trait> Module<T> {
+    /// Checks if who is a validator
     pub fn is_validator(who: &T::AccountId) -> bool {
         Self::validators(who)
     }
 
+    /// Used for genesis config of validator set
     fn initialize_validators(validators: &[T::AccountId]) {
         if !validators.is_empty() {
             for v in validators {
@@ -257,6 +258,8 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// Provides an AccountId for the pallet.
+    /// This is used both as an origin check and deposit/withdrawal account.
 	pub fn account_id() -> T::AccountId {
 		MODULE_ID.into_account()
 	}
@@ -302,9 +305,9 @@ impl<T: Trait> Module<T> {
     }
 
     fn finalize_transfer(votes: ProposalVotes<T::AccountId, T::Hash>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSuceeded(votes.hash));
+        Self::deposit_event(RawEvent::ProposalSucceeded(votes.hash));
         let prop = <Proposals<T>>::get(votes.hash).unwrap();
-        prop.dispatch(frame_system::RawOrigin::Root.into())
+        prop.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
         // match result {
         //     Ok(res) => Ok(res),
         //     Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
@@ -312,7 +315,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn cancel_transfer(prop_id: T::Hash) -> DispatchResult {
-        // TODO
+        // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalFailed(prop_id));
         Ok(())
     }

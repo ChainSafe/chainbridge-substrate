@@ -9,7 +9,7 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{Dispatchable, AccountIdConversion};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -125,12 +125,12 @@ decl_storage! {
         config(validators): Vec<T::AccountId>;
         build(|config| {
             Module::<T>::initialize_validators(&config.validators);
-			// Create Bridge account
-			// let _ = T::Currency::make_free_balance_be(
-			// 	&<Module<T>>::account_id(),
-			// 	T::Currency::minimum_balance(),
-			// );
-		});
+            // Create Bridge account
+            // let _ = T::Currency::make_free_balance_be(
+            // 	&<Module<T>>::account_id(),
+            // 	T::Currency::minimum_balance(),
+            // );
+        });
     }
 }
 
@@ -260,9 +260,9 @@ impl<T: Trait> Module<T> {
 
     /// Provides an AccountId for the pallet.
     /// This is used both as an origin check and deposit/withdrawal account.
-	pub fn account_id() -> T::AccountId {
-		MODULE_ID.into_account()
-	}
+    pub fn account_id() -> T::AccountId {
+        MODULE_ID.into_account()
+    }
 
     /// Note: Existence of proposal must be checked before calling
     fn vote_for(

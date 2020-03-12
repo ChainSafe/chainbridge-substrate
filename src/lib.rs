@@ -101,6 +101,7 @@ decl_error! {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
+        /// The identifier for this chain.
         EmitterAddress: Vec<u8>;
 
         Chains: map hasher(blake2_256) Vec<u8> => Option<TxCount>;
@@ -141,17 +142,23 @@ decl_module! {
 
         /// Sets the address used to identify this chain
         pub fn set_address(origin, addr: Vec<u8>) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure_root(origin)?;
 
             EmitterAddress::put(addr);
             Ok(())
         }
 
+        /// Sets the address used to identify this chain
+        pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
+            ensure_root(origin)?;
+
+            ValidatorThreshold::put(threshold);
+            Ok(())
+        }
+
         /// Enables a chain ID as a destination for a bridge transfer
         pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure_root(origin)?;
 
             Chains::insert(&id, TxCount { recv: 0, sent: 0 });
             Ok(())
@@ -159,8 +166,7 @@ decl_module! {
 
         /// Adds a new validator to the set. Errors if validator already exists.
         pub fn add_validator(origin, v: T::AccountId) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure_root(origin)?;
 
             ensure!(!Self::is_validator(&v), Error::<T>::ValidatorAlreadyExists);
             <Validators<T>>::insert(&v, true);
@@ -170,8 +176,7 @@ decl_module! {
 
         /// Removes an existing validator from the set. Errors if validator doesn't exist.
         pub fn remove_validator(origin, v: T::AccountId) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure_root(origin)?;
 
             ensure!(Self::is_validator(&v), Error::<T>::ValidatorInvalid);
             <Validators<T>>::remove(&v);

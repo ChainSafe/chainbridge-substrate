@@ -13,10 +13,23 @@ use sp_core::{blake2_256, H256};
 fn set_get_address() {
     new_test_ext(1).execute_with(|| {
         assert_ok!(Bridge::set_address(
-            Origin::signed(VALIDATOR_A),
+            Origin::ROOT,
             vec![1, 2, 3, 4]
         ));
         assert_eq!(<EmitterAddress>::get(), vec![1, 2, 3, 4])
+    })
+}
+
+#[test]
+fn set_get_threshold() {
+    new_test_ext(1).execute_with(|| {
+        assert_eq!(<ValidatorThreshold>::get(), 1);
+
+        assert_ok!(Bridge::set_threshold(
+            Origin::ROOT,
+            5
+        ));
+        assert_eq!(<ValidatorThreshold>::get(), 5)
     })
 }
 
@@ -29,7 +42,7 @@ fn asset_transfer_success() {
         let metadata = vec![];
 
         assert_ok!(Bridge::whitelist_chain(
-            Origin::signed(VALIDATOR_B),
+            Origin::ROOT,
             chain_id.clone()
         ));
         assert_ok!(Bridge::receive_asset(
@@ -52,7 +65,7 @@ fn asset_transfer_invalid_chain() {
         let metadata = vec![];
 
         assert_ok!(Bridge::whitelist_chain(
-            Origin::signed(VALIDATOR_A),
+            Origin::ROOT,
             chain_id
         ));
         assert_noop!(
@@ -84,21 +97,21 @@ fn add_remove_validator() {
     new_test_ext(1).execute_with(|| {
         // Already exists
         assert_noop!(
-            Bridge::add_validator(Origin::signed(VALIDATOR_A), VALIDATOR_A),
+            Bridge::add_validator(Origin::ROOT, VALIDATOR_A),
             Error::<Test>::ValidatorAlreadyExists
         );
 
         // Errors if added twice
-        assert_ok!(Bridge::add_validator(Origin::signed(VALIDATOR_A), 99));
+        assert_ok!(Bridge::add_validator(Origin::ROOT, 99));
         assert_noop!(
-            Bridge::add_validator(Origin::signed(VALIDATOR_A), 99),
+            Bridge::add_validator(Origin::ROOT, 99),
             Error::<Test>::ValidatorAlreadyExists
         );
 
         // Confirm removal
-        assert_ok!(Bridge::remove_validator(Origin::signed(VALIDATOR_A), 99));
+        assert_ok!(Bridge::remove_validator(Origin::ROOT, 99));
         assert_noop!(
-            Bridge::remove_validator(Origin::signed(VALIDATOR_A), 99),
+            Bridge::remove_validator(Origin::ROOT, 99),
             Error::<Test>::ValidatorInvalid
         );
     })

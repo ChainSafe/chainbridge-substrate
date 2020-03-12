@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::mock::{
-    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, ENDOWED_ID, USER,
-    VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
+    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A,
+    VALIDATOR_B, VALIDATOR_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
@@ -69,7 +69,11 @@ fn transfer() {
         assert_eq!(<EndowedAccount<Test>>::get(), ENDOWED_ID);
         assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE);
         // Transfer and check result
-        assert_ok!(Bridge::transfer(Origin::signed(Bridge::account_id()), 2, 10));
+        assert_ok!(Bridge::transfer(
+            Origin::signed(Bridge::account_id()),
+            2,
+            10
+        ));
         assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(2), 10);
     })

@@ -61,9 +61,9 @@ decl_event! {
         // dest_id, deposit_id, to, token_id, metadata
         AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
         /// Valdiator added to set
-        ValidatorAdded(AccountId),
-        /// Validator removed from set
-        ValidatorRemoved(AccountId),
+        RelayerAdded(AccountId),
+        /// Relayer removed from set
+        RelayerRemoved(AccountId),
 
         /// Vote submitted in favour of proposal
         VoteFor(Hash, AccountId),
@@ -82,12 +82,12 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
-        /// Validator already in set
-        ValidatorAlreadyExists,
-        /// Provided accountId is not a validator
-        ValidatorInvalid,
-        /// Validator has already submitted some vote for this proposal
-        ValidatorAlreadyVoted,
+        /// Relayer already in set
+        RelayerAlreadyExists,
+        /// Provided accountId is not a relayer
+        RelayerInvalid,
+        /// Relayer has already submitted some vote for this proposal
+        RelayerAlreadyVoted,
         /// A proposal with these parameters has already been submitted
         ProposalAlreadyExists,
         /// No proposal with the ID was found
@@ -108,9 +108,9 @@ decl_storage! {
 
         EndowedAccount get(fn endowed) config(): T::AccountId;
 
-        ValidatorThreshold get(fn validator_threshold) config(): u32;
+        RelayerThreshold get(fn relayer_threshold) config(): u32;
 
-        pub Validators get(fn validators): map hasher(blake2_256) T::AccountId => bool;
+        pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
 
         /// All known proposals.
         /// The key is the hash of the call and the deposit ID, to ensure it's unique.
@@ -123,9 +123,9 @@ decl_storage! {
             => Option<<T as Trait>::Proposal>;
     }
     add_extra_genesis {
-        config(validators): Vec<T::AccountId>;
+        config(relayers): Vec<T::AccountId>;
         build(|config| {
-            Module::<T>::initialize_validators(&config.validators);
+            Module::<T>::initialize_relayers(&config.relayers);
             // Create Bridge account
             // let _ = T::Currency::make_free_balance_be(
             // 	&<Module<T>>::account_id(),
@@ -152,7 +152,7 @@ decl_module! {
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             ensure_root(origin)?;
 
-            ValidatorThreshold::put(threshold);
+            RelayerThreshold::put(threshold);
             Ok(())
         }
 
@@ -164,29 +164,29 @@ decl_module! {
             Ok(())
         }
 
-        /// Adds a new validator to the set. Errors if validator already exists.
-        pub fn add_validator(origin, v: T::AccountId) -> DispatchResult {
+        /// Adds a new relayer to the set. Errors if relayer already exists.
+        pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
 
-            ensure!(!Self::is_validator(&v), Error::<T>::ValidatorAlreadyExists);
-            <Validators<T>>::insert(&v, true);
-            Self::deposit_event(RawEvent::ValidatorAdded(v));
+            ensure!(!Self::is_relayer(&v), Error::<T>::RelayerAlreadyExists);
+            <Relayers<T>>::insert(&v, true);
+            Self::deposit_event(RawEvent::RelayerAdded(v));
             Ok(())
         }
 
-        /// Removes an existing validator from the set. Errors if validator doesn't exist.
-        pub fn remove_validator(origin, v: T::AccountId) -> DispatchResult {
+        /// Removes an existing relayer from the set. Errors if relayer doesn't exist.
+        pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
 
-            ensure!(Self::is_validator(&v), Error::<T>::ValidatorInvalid);
-            <Validators<T>>::remove(&v);
-            Self::deposit_event(RawEvent::ValidatorRemoved(v));
+            ensure!(Self::is_relayer(&v), Error::<T>::RelayerInvalid);
+            <Relayers<T>>::remove(&v);
+            Self::deposit_event(RawEvent::RelayerRemoved(v));
             Ok(())
         }
 
         pub fn create_proposal(origin, hash: T::Hash, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure!(Self::is_relayer(&who), Error::<T>::RelayerInvalid);
 
             // Make sure proposal doesn't already exist
             ensure!(!<Votes<T>>::contains_key(hash), Error::<T>::ProposalAlreadyExists);
@@ -201,7 +201,7 @@ decl_module! {
 
         pub fn vote(origin, hash: T::Hash, in_favour: bool) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(Self::is_validator(&who), Error::<T>::ValidatorInvalid);
+            ensure!(Self::is_relayer(&who), Error::<T>::RelayerInvalid);
 
             // Check if proposal exists
             if let Some(votes) = <Votes<T>>::get(hash) {
@@ -249,16 +249,16 @@ decl_module! {
 /// Main module declaration.
 /// Here we should include non-state changing public funcs
 impl<T: Trait> Module<T> {
-    /// Checks if who is a validator
-    pub fn is_validator(who: &T::AccountId) -> bool {
-        Self::validators(who)
+    /// Checks if who is a relayer
+    pub fn is_relayer(who: &T::AccountId) -> bool {
+        Self::relayers(who)
     }
 
-    /// Used for genesis config of validator set
-    fn initialize_validators(validators: &[T::AccountId]) {
-        if !validators.is_empty() {
-            for v in validators {
-                <Validators<T>>::insert(v, true);
+    /// Used for genesis config of relayer set
+    fn initialize_relayers(relayers: &[T::AccountId]) {
+        if !relayers.is_empty() {
+            for v in relayers {
+                <Relayers<T>>::insert(v, true);
             }
         }
     }
@@ -279,14 +279,14 @@ impl<T: Trait> Module<T> {
             <Votes<T>>::insert(votes.hash, votes.clone());
             Self::deposit_event(RawEvent::VoteFor(votes.hash, who.clone()));
 
-            if votes.votes_for.len() == <ValidatorThreshold>::get() as usize {
+            if votes.votes_for.len() == <RelayerThreshold>::get() as usize {
                 Self::finalize_transfer(votes)?
-            } else if votes.votes_for.len() > <ValidatorThreshold>::get() as usize {
+            } else if votes.votes_for.len() > <RelayerThreshold>::get() as usize {
                 Err(Error::<T>::ProposalAlreadyComplete)?
             }
             Ok(())
         } else {
-            Err(Error::<T>::ValidatorAlreadyVoted)?
+            Err(Error::<T>::RelayerAlreadyVoted)?
         }
     }
 
@@ -300,12 +300,12 @@ impl<T: Trait> Module<T> {
             <Votes<T>>::insert(votes.hash, votes.clone());
             Self::deposit_event(RawEvent::VoteAgainst(votes.hash, who.clone()));
 
-            if votes.votes_against.len() > <ValidatorThreshold>::get() as usize {
+            if votes.votes_against.len() > <RelayerThreshold>::get() as usize {
                 Self::cancel_transfer(votes.hash)?
             }
             Ok(())
         } else {
-            Err(Error::<T>::ValidatorAlreadyVoted)?
+            Err(Error::<T>::RelayerAlreadyVoted)?
         }
     }
 

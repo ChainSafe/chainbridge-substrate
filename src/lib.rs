@@ -6,11 +6,10 @@ use frame_support::{
     dispatch::DispatchResult,
     ensure,
     traits::{Currency, ExistenceRequirement::AllowDeath},
-    weights::GetDispatchInfo,
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{Dispatchable, EnsureOrigin};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -19,11 +18,7 @@ use codec::{Decode, Encode};
 mod mock;
 mod tests;
 
-// TODO: Could use as "endowed account":
-// 	pub fn account_id() -> T::AccountId {
-// 		MODULE_ID.into_account()
-// 	}
-const MODULE_ID: ModuleId = ModuleId(*b"py/bridg");
+const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
 /// Tracks the transfer in/out of each respective chain
 #[derive(Encode, Decode, Clone, Default)]
@@ -54,9 +49,7 @@ pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
-    /// The origin used to manage who can modify the bridge configuration
-    // type ValidatorOrigin: EnsureOrigin<Self::Origin>; // + From<frame_system::RawOrigin<Self>>;
-    // type TransferCall: Parameter + Dispatchable<Origin=Self::ValidatorOrigin> + GetDispatchInfo;
+    /// Proposed dispatchable call
     type Proposal: Parameter + Dispatchable<Origin = Self::Origin>;
 }
 
@@ -67,13 +60,19 @@ decl_event! {
     {
         // dest_id, deposit_id, to, token_id, metadata
         AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// Valdiator added to set
         ValidatorAdded(AccountId),
+        /// Validator removed from set
         ValidatorRemoved(AccountId),
 
+        /// Vote submitted in favour of proposal
         VoteFor(Hash, AccountId),
+        /// Vot submitted against proposal
         VoteAgainst(Hash, AccountId),
 
-        ProposalSuceeded(Hash),
+        /// Voting successful for a proposal
+        ProposalSucceeded(Hash),
+        /// Voting rejected a proposal
         ProposalFailed(Hash),
     }
 }
@@ -124,7 +123,14 @@ decl_storage! {
     }
     add_extra_genesis {
         config(validators): Vec<T::AccountId>;
-        build(|config| Module::<T>::initialize_validators(&config.validators));
+        build(|config| {
+            Module::<T>::initialize_validators(&config.validators);
+            // Create Bridge account
+            // let _ = T::Currency::make_free_balance_be(
+            // 	&<Module<T>>::account_id(),
+            // 	T::Currency::minimum_balance(),
+            // );
+        });
     }
 }
 
@@ -226,7 +232,8 @@ decl_module! {
 
         // TODO: Should use correct amount type
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
             let source: T::AccountId = <EndowedAccount<T>>::get();
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
@@ -237,10 +244,12 @@ decl_module! {
 /// Main module declaration.
 /// Here we should include non-state changing public funcs
 impl<T: Trait> Module<T> {
+    /// Checks if who is a validator
     pub fn is_validator(who: &T::AccountId) -> bool {
         Self::validators(who)
     }
 
+    /// Used for genesis config of validator set
     fn initialize_validators(validators: &[T::AccountId]) {
         if !validators.is_empty() {
             for v in validators {
@@ -249,12 +258,17 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// Provides an AccountId for the pallet.
+    /// This is used both as an origin check and deposit/withdrawal account.
+    pub fn account_id() -> T::AccountId {
+        MODULE_ID.into_account()
+    }
+
     /// Note: Existence of proposal must be checked before calling
     fn vote_for(
         who: T::AccountId,
         mut votes: ProposalVotes<T::AccountId, T::Hash>,
     ) -> DispatchResult {
-        //let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
         if !votes.votes_for.contains(&who) {
             votes.votes_for.push(who.clone());
             <Votes<T>>::insert(votes.hash, votes.clone());
@@ -276,7 +290,6 @@ impl<T: Trait> Module<T> {
         who: T::AccountId,
         mut votes: ProposalVotes<T::AccountId, T::Hash>,
     ) -> DispatchResult {
-        // let mut prop = <Proposals<T>>::get((deposit_id, call.clone())).unwrap();
         if !votes.votes_against.contains(&who) {
             votes.votes_against.push(who.clone());
             <Votes<T>>::insert(votes.hash, votes.clone());
@@ -292,17 +305,17 @@ impl<T: Trait> Module<T> {
     }
 
     fn finalize_transfer(votes: ProposalVotes<T::AccountId, T::Hash>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSuceeded(votes.hash));
+        Self::deposit_event(RawEvent::ProposalSucceeded(votes.hash));
         let prop = <Proposals<T>>::get(votes.hash).unwrap();
-        let result = prop.dispatch(frame_system::RawOrigin::Root.into());
-        match result {
-            Ok(res) => Ok(res),
-            Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
-        }
+        prop.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+        // match result {
+        //     Ok(res) => Ok(res),
+        //     Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
+        // }
     }
 
     fn cancel_transfer(prop_id: T::Hash) -> DispatchResult {
-        // TODO
+        // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalFailed(prop_id));
         Ok(())
     }

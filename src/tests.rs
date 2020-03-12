@@ -1,15 +1,13 @@
 #![cfg(test)]
 
 use super::mock::{
-    new_test_ext, Balances, Bridge, Origin, System, Test, ENDOWED_BALANCE, ENDOWED_ID, USER,
-    VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
+    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A,
+    VALIDATOR_B, VALIDATOR_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use frame_system::{EventRecord, Phase};
 
 use sp_core::{blake2_256, H256};
-use sp_runtime::testing::TestValidity::Valid;
 
 #[test]
 fn set_get_address() {
@@ -71,7 +69,11 @@ fn transfer() {
         assert_eq!(<EndowedAccount<Test>>::get(), ENDOWED_ID);
         assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE);
         // Transfer and check result
-        assert_ok!(Bridge::transfer(Origin::ROOT, 2, 10));
+        assert_ok!(Bridge::transfer(
+            Origin::signed(Bridge::account_id()),
+            2,
+            10
+        ));
         assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(2), 10);
     })

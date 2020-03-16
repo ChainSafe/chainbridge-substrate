@@ -86,6 +86,8 @@ decl_error! {
         RelayerAlreadyExists,
         /// Provided accountId is not a relayer
         RelayerInvalid,
+        /// Protected operation, much be performed by relayer
+        MustBeRelayer,
         /// Relayer has already submitted some vote for this proposal
         RelayerAlreadyVoted,
         /// A proposal with these parameters has already been submitted
@@ -186,7 +188,7 @@ decl_module! {
 
         pub fn create_proposal(origin, hash: T::Hash, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(Self::is_relayer(&who), Error::<T>::RelayerInvalid);
+            ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
 
             // Make sure proposal doesn't already exist
             ensure!(!<Votes<T>>::contains_key(hash), Error::<T>::ProposalAlreadyExists);
@@ -201,7 +203,7 @@ decl_module! {
 
         pub fn vote(origin, hash: T::Hash, in_favour: bool) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(Self::is_relayer(&who), Error::<T>::RelayerInvalid);
+            ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
 
             // Check if proposal exists
             if let Some(votes) = <Votes<T>>::get(hash) {
@@ -299,7 +301,7 @@ impl<T: Trait> Module<T> {
             votes.votes_against.push(who.clone());
             <Votes<T>>::insert(votes.hash, votes.clone());
             Self::deposit_event(RawEvent::VoteAgainst(votes.hash, who.clone()));
-
+            votes against > validator set size - threshold
             if votes.votes_against.len() > <RelayerThreshold>::get() as usize {
                 Self::cancel_transfer(votes.hash)?
             }

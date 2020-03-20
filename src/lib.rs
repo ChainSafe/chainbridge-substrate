@@ -9,11 +9,12 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
+use sp_io::hashing::blake2_256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, EncodeLike};
 
 mod mock;
 mod tests;
@@ -28,19 +29,19 @@ struct TxCount {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct ProposalVotes<AccountId, Hash> {
+pub struct ProposalVotes<AccountId> {
     votes_for: Vec<AccountId>,
     votes_against: Vec<AccountId>,
-    // TODO: If hash matches the key in the map, we can simplify logic below to not need deposit_id when inserting/updating
-    hash: Hash,
+    // TODO: We may wish to store the Call here. While it is required to access the map internally,
+    // externally we can enumarate the keys which would give us all existing propsoals
+    // but would not reveal the calls.
 }
 
-impl<AccountId, Hash> ProposalVotes<AccountId, Hash> {
-    fn new(hash: Hash) -> Self {
+impl<AccountId> Default for ProposalVotes<AccountId> {
+    fn default() -> Self {
         Self {
             votes_for: vec![],
             votes_against: vec![],
-            hash,
         }
     }
 }
@@ -50,15 +51,12 @@ pub trait Trait: system::Trait {
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
     /// Proposed dispatchable call
-    type Proposal: Parameter + Dispatchable<Origin = Self::Origin>;
+    type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike;
 }
 
 decl_event! {
-    pub enum Event<T> where
-        <T as frame_system::Trait>::AccountId,
-        <T as frame_system::Trait>::Hash
-    {
-        // dest_id, deposit_id, to, token_id, metadata
+    pub enum Event<T> where <T as frame_system::Trait>::AccountId {
+        // dest_id, prop_id, to, token_id, metadata
         AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
         /// Valdiator added to set
         RelayerAdded(AccountId),
@@ -66,14 +64,14 @@ decl_event! {
         RelayerRemoved(AccountId),
 
         /// Vote submitted in favour of proposal
-        VoteFor(Hash, AccountId),
+        VoteFor(u32, AccountId),
         /// Vot submitted against proposal
-        VoteAgainst(Hash, AccountId),
+        VoteAgainst(u32, AccountId),
 
         /// Voting successful for a proposal
-        ProposalSucceeded(Hash),
+        ProposalSucceeded(u32),
         /// Voting rejected a proposal
-        ProposalFailed(Hash),
+        ProposalFailed(u32),
     }
 }
 
@@ -114,15 +112,14 @@ decl_storage! {
 
         pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
 
+        pub RelayerCount get(fn relayer_count): u32;
+
         /// All known proposals.
         /// The key is the hash of the call and the deposit ID, to ensure it's unique.
         pub Votes get(fn votes):
-            map hasher(blake2_256) T::Hash
-            => Option<ProposalVotes<T::AccountId, T::Hash>>;
+            map hasher(blake2_256) (u32, T::Proposal)
+            => Option<ProposalVotes<T::AccountId>>;
 
-        pub Proposals get(fn proposals):
-            map hasher(blake2_256) T::Hash
-            => Option<<T as Trait>::Proposal>;
     }
     add_extra_genesis {
         config(relayers): Vec<T::AccountId>;
@@ -172,6 +169,8 @@ decl_module! {
 
             ensure!(!Self::is_relayer(&v), Error::<T>::RelayerAlreadyExists);
             <Relayers<T>>::insert(&v, true);
+            <RelayerCount>::mutate(|i| *i += 1);
+
             Self::deposit_event(RawEvent::RelayerAdded(v));
             Ok(())
         }
@@ -182,40 +181,42 @@ decl_module! {
 
             ensure!(Self::is_relayer(&v), Error::<T>::RelayerInvalid);
             <Relayers<T>>::remove(&v);
+            <RelayerCount>::mutate(|i| *i -= 1);
             Self::deposit_event(RawEvent::RelayerRemoved(v));
             Ok(())
         }
 
-        pub fn create_proposal(origin, hash: T::Hash, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn create_proposal(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
 
             // Make sure proposal doesn't already exist
-            ensure!(!<Votes<T>>::contains_key(hash), Error::<T>::ProposalAlreadyExists);
-
-            let proposal = ProposalVotes::new(hash);
-            <Votes<T>>::insert(hash, proposal.clone());
-            <Proposals<T>>::insert(hash, call);
+            ensure!(!<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalAlreadyExists);
 
             // Creating a proposal also votes for it
-            Self::vote_for(who, proposal)
+            Self::vote_for(who, prop_id, call)
         }
 
-        pub fn vote(origin, hash: T::Hash, in_favour: bool) -> DispatchResult {
+        pub fn approve(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
 
-            // Check if proposal exists
-            if let Some(votes) = <Votes<T>>::get(hash) {
-                // Vote if they haven't already
-                if in_favour {
-                    Self::vote_for(who, votes)?
-                } else {
-                    Self::vote_against(who, votes)?
-                }
-            } else {
-                Err(Error::<T>::ProposalDoesNotExist)?
-            }
+            // Make sure proposal exists
+            ensure!(<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalDoesNotExist);
+
+            Self::vote_for(who, prop_id, call)?;
+
+            Ok(())
+        }
+
+        pub fn reject(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
+
+            // Make sure proposal exists
+            ensure!(<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalDoesNotExist);
+
+            Self::vote_against(who, prop_id, call)?;
 
             Ok(())
         }
@@ -223,7 +224,6 @@ decl_module! {
         /// Completes an asset transfer to the chain by emitting an event to be acted on by the
         /// bridge and updating the tx count for the respective chan.
         pub fn receive_asset(origin, dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
-            // TODO: Limit access
             ensure_root(origin)?;
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
@@ -262,6 +262,7 @@ impl<T: Trait> Module<T> {
             for v in relayers {
                 <Relayers<T>>::insert(v, true);
             }
+            <RelayerCount>::put(relayers.len() as u32);
         }
     }
 
@@ -271,18 +272,20 @@ impl<T: Trait> Module<T> {
         MODULE_ID.into_account()
     }
 
-    /// Note: Existence of proposal must be checked before calling
-    fn vote_for(
-        who: T::AccountId,
-        mut votes: ProposalVotes<T::AccountId, T::Hash>,
-    ) -> DispatchResult {
-        if !votes.votes_for.contains(&who) {
-            votes.votes_for.push(who.clone());
-            <Votes<T>>::insert(votes.hash, votes.clone());
-            Self::deposit_event(RawEvent::VoteFor(votes.hash, who.clone()));
+    fn vote_for(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
+        // Use default in the case it doesn't already exist
+        let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
 
+        if !votes.votes_for.contains(&who) {
+            // Vote and store
+            votes.votes_for.push(who.clone());
+            <Votes<T>>::insert((prop_id, prop.clone()), votes.clone());
+
+            Self::deposit_event(RawEvent::VoteFor(prop_id, who.clone()));
+
+            // Check if finalization is possible
             if votes.votes_for.len() == <RelayerThreshold>::get() as usize {
-                Self::finalize_transfer(votes)?
+                Self::finalize_execution(prop_id, prop)?
             } else if votes.votes_for.len() > <RelayerThreshold>::get() as usize {
                 Err(Error::<T>::ProposalAlreadyComplete)?
             }
@@ -292,36 +295,40 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    /// Note: Existence of proposal must be checked before calling
-    fn vote_against(
-        who: T::AccountId,
-        mut votes: ProposalVotes<T::AccountId, T::Hash>,
-    ) -> DispatchResult {
+    fn vote_against(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
+        // Use default in the case it doesn't already exist
+        let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
+
         if !votes.votes_against.contains(&who) {
+            // Vote and store
             votes.votes_against.push(who.clone());
-            <Votes<T>>::insert(votes.hash, votes.clone());
-            Self::deposit_event(RawEvent::VoteAgainst(votes.hash, who.clone()));
-            votes against > validator set size - threshold
-            if votes.votes_against.len() > <RelayerThreshold>::get() as usize {
-                Self::cancel_transfer(votes.hash)?
+            <Votes<T>>::insert((prop_id, prop.clone()), votes.clone());
+
+            Self::deposit_event(RawEvent::VoteAgainst(prop_id, who.clone()));
+
+            // Check if cancellation is possible
+            if votes.votes_against.len()
+                > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
+            {
+                Self::cancel_execution(prop_id)?
             }
+
             Ok(())
         } else {
             Err(Error::<T>::RelayerAlreadyVoted)?
         }
     }
 
-    fn finalize_transfer(votes: ProposalVotes<T::AccountId, T::Hash>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSucceeded(votes.hash));
-        let prop = <Proposals<T>>::get(votes.hash).unwrap();
-        prop.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+    fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
+        Self::deposit_event(RawEvent::ProposalSucceeded(prop_id));
+        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
         // match result {
         //     Ok(res) => Ok(res),
         //     Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
         // }
     }
 
-    fn cancel_transfer(prop_id: T::Hash) -> DispatchResult {
+    fn cancel_execution(prop_id: u32) -> DispatchResult {
         // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalFailed(prop_id));
         Ok(())

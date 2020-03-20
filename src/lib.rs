@@ -248,8 +248,6 @@ decl_module! {
     }
 }
 
-/// Main module declaration.
-/// Here we should include non-state changing public funcs
 impl<T: Trait> Module<T> {
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {
@@ -322,10 +320,6 @@ impl<T: Trait> Module<T> {
     fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalSucceeded(prop_id));
         call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
-        // match result {
-        //     Ok(res) => Ok(res),
-        //     Err(_) => Err(Error::<T>::DebugInnerCallFailed.into()),
-        // }
     }
 
     fn cancel_execution(prop_id: u32) -> DispatchResult {

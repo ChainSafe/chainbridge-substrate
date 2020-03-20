@@ -9,6 +9,20 @@ use frame_support::{assert_noop, assert_ok};
 
 use sp_core::{blake2_256, H256};
 
+type System = frame_system::Module<Test>;
+
+#[test]
+fn genesis_relayers_generated() {
+    new_test_ext(2).execute_with(|| {
+        System::set_block_number(1);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_A), true);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_B), true);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_C), true);
+        assert_eq!(<RelayerCount>::get(), 3);
+        assert_eq!(<RelayerThreshold>::get(), 2);
+    });
+}
+
 #[test]
 fn set_get_address() {
     new_test_ext(1).execute_with(|| {

@@ -92,8 +92,8 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     GenesisConfig {
         bridge: Some(bridge::GenesisConfig {
             endowed: ENDOWED_ID,
-            validators: vec![VALIDATOR_A, VALIDATOR_B, VALIDATOR_C],
-            validator_threshold: threshold,
+            relayers: vec![VALIDATOR_A, VALIDATOR_B, VALIDATOR_C],
+            relayer_threshold: threshold,
         }),
         balances: Some(balances::GenesisConfig {
             balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],

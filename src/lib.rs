@@ -102,7 +102,7 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
         /// The identifier for this chain.
-        EmitterAddress: Vec<u8>;
+        ChainId: u32;
 
         Chains: map hasher(blake2_256) Vec<u8> => Option<TxCount>;
 
@@ -140,10 +140,10 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Sets the address used to identify this chain
-        pub fn set_address(origin, addr: Vec<u8>) -> DispatchResult {
+        pub fn set_id(origin, id: u32) -> DispatchResult {
             ensure_root(origin)?;
 
-            EmitterAddress::put(addr);
+            ChainId::put(id);
             Ok(())
         }
 

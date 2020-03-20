@@ -24,10 +24,10 @@ fn genesis_relayers_generated() {
 }
 
 #[test]
-fn set_get_address() {
+fn set_get_id() {
     new_test_ext(1).execute_with(|| {
-        assert_ok!(Bridge::set_address(Origin::ROOT, vec![1, 2, 3, 4]));
-        assert_eq!(<EmitterAddress>::get(), vec![1, 2, 3, 4])
+        assert_ok!(Bridge::set_id(Origin::ROOT, 99));
+        assert_eq!(<ChainId>::get(), 99)
     })
 }
 

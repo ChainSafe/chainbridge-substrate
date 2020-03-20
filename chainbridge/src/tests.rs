@@ -9,14 +9,35 @@ use frame_support::{assert_noop, assert_ok};
 
 use sp_core::{blake2_256, H256};
 
+type System = frame_system::Module<Test>;
+
 #[test]
-fn set_get_address() {
+fn genesis_relayers_generated() {
+    new_test_ext(2).execute_with(|| {
+        System::set_block_number(1);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_A), true);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_B), true);
+        assert_eq!(<Relayers<Test>>::get(VALIDATOR_C), true);
+        assert_eq!(<RelayerCount>::get(), 3);
+        assert_eq!(<RelayerThreshold>::get(), 2);
+    });
+}
+
+#[test]
+fn set_get_id() {
     new_test_ext(1).execute_with(|| {
-        assert_ok!(Bridge::set_address(
-            Origin::signed(VALIDATOR_A),
-            vec![1, 2, 3, 4]
-        ));
-        assert_eq!(<EmitterAddress>::get(), vec![1, 2, 3, 4])
+        assert_ok!(Bridge::set_id(Origin::ROOT, 99));
+        assert_eq!(<ChainId>::get(), 99)
+    })
+}
+
+#[test]
+fn set_get_threshold() {
+    new_test_ext(1).execute_with(|| {
+        assert_eq!(<RelayerThreshold>::get(), 1);
+
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, 5));
+        assert_eq!(<RelayerThreshold>::get(), 5)
     })
 }
 
@@ -28,10 +49,7 @@ fn asset_transfer_success() {
         let token_id = vec![3];
         let metadata = vec![];
 
-        assert_ok!(Bridge::whitelist_chain(
-            Origin::signed(VALIDATOR_B),
-            chain_id.clone()
-        ));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
         assert_ok!(Bridge::receive_asset(
             Origin::ROOT,
             chain_id.clone(),
@@ -51,10 +69,7 @@ fn asset_transfer_invalid_chain() {
         let token_id = vec![4];
         let metadata = vec![];
 
-        assert_ok!(Bridge::whitelist_chain(
-            Origin::signed(VALIDATOR_A),
-            chain_id
-        ));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id));
         assert_noop!(
             Bridge::receive_asset(Origin::ROOT, bad_dest_id, to, token_id, metadata),
             Error::<Test>::ChainNotWhitelisted
@@ -80,26 +95,29 @@ fn transfer() {
 }
 
 #[test]
-fn add_remove_validator() {
+fn add_remove_relayer() {
     new_test_ext(1).execute_with(|| {
+        assert_eq!(Bridge::relayer_count(), 3);
         // Already exists
         assert_noop!(
-            Bridge::add_validator(Origin::signed(VALIDATOR_A), VALIDATOR_A),
-            Error::<Test>::ValidatorAlreadyExists
+            Bridge::add_relayer(Origin::ROOT, VALIDATOR_A),
+            Error::<Test>::RelayerAlreadyExists
         );
 
         // Errors if added twice
-        assert_ok!(Bridge::add_validator(Origin::signed(VALIDATOR_A), 99));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, 99));
+        assert_eq!(Bridge::relayer_count(), 4);
         assert_noop!(
-            Bridge::add_validator(Origin::signed(VALIDATOR_A), 99),
-            Error::<Test>::ValidatorAlreadyExists
+            Bridge::add_relayer(Origin::ROOT, 99),
+            Error::<Test>::RelayerAlreadyExists
         );
 
         // Confirm removal
-        assert_ok!(Bridge::remove_validator(Origin::signed(VALIDATOR_A), 99));
+        assert_ok!(Bridge::remove_relayer(Origin::ROOT, 99));
+        assert_eq!(Bridge::relayer_count(), 3);
         assert_noop!(
-            Bridge::remove_validator(Origin::signed(VALIDATOR_A), 99),
-            Error::<Test>::ValidatorInvalid
+            Bridge::remove_relayer(Origin::ROOT, 99),
+            Error::<Test>::RelayerInvalid
         );
     })
 }
@@ -111,43 +129,48 @@ fn make_proposal(to: u64, amount: u32) -> mock::Call {
 #[test]
 fn create_sucessful_transfer_proposal() {
     new_test_ext(2).execute_with(|| {
-        let prop_id: H256 = blake2_256("proposal".as_ref()).into();
+        let prop_id = 1;
 
-        let call = make_proposal(USER, 10);
+        let proposal = make_proposal(USER, 10);
 
-        assert_eq!(Bridge::validator_threshold(), 2);
+        assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::create_proposal(
             Origin::signed(VALIDATOR_A),
-            prop_id.clone(),
-            Box::new(call.clone())
+            prop_id,
+            Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A],
             votes_against: vec![],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 
-        // Second validator votes against
-        assert_ok!(Bridge::vote(Origin::signed(VALIDATOR_B), prop_id, false));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        // Second relayer votes against
+        assert_ok!(Bridge::reject(
+            Origin::signed(VALIDATOR_B),
+            prop_id,
+            Box::new(proposal.clone())
+        ));
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A],
             votes_against: vec![VALIDATOR_B],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 
-        // Third validator votes in favour
-        assert_ok!(Bridge::vote(Origin::signed(VALIDATOR_C), prop_id, true));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        // Third relayer votes in favour
+        assert_ok!(Bridge::approve(
+            Origin::signed(VALIDATOR_C),
+            prop_id,
+            Box::new(proposal.clone())
+        ));
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A, VALIDATOR_C],
             votes_against: vec![VALIDATOR_B],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 
@@ -159,43 +182,48 @@ fn create_sucessful_transfer_proposal() {
 #[test]
 fn create_unsucessful_transfer_proposal() {
     new_test_ext(2).execute_with(|| {
-        let prop_id: H256 = blake2_256("proposal".as_ref()).into();
+        let prop_id = 1;
 
-        let call = make_proposal(VALIDATOR_B, 10);
+        let proposal = make_proposal(VALIDATOR_B, 10);
 
-        assert_eq!(Bridge::validator_threshold(), 2);
+        assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::create_proposal(
             Origin::signed(VALIDATOR_A),
             prop_id.clone(),
-            Box::new(call.clone())
+            Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A],
             votes_against: vec![],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 
-        // Second validator votes against
-        assert_ok!(Bridge::vote(Origin::signed(VALIDATOR_B), prop_id, false));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        // Second relayer votes against
+        assert_ok!(Bridge::reject(
+            Origin::signed(VALIDATOR_B),
+            prop_id,
+            Box::new(proposal.clone())
+        ));
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A],
             votes_against: vec![VALIDATOR_B],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 
-        // Third validator votes against
-        assert_ok!(Bridge::vote(Origin::signed(VALIDATOR_C), prop_id, false));
-        let prop = Bridge::votes(prop_id.clone()).unwrap();
+        // Third relayer votes against
+        assert_ok!(Bridge::reject(
+            Origin::signed(VALIDATOR_C),
+            prop_id,
+            Box::new(proposal.clone())
+        ));
+        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![VALIDATOR_A],
             votes_against: vec![VALIDATOR_B, VALIDATOR_C],
-            hash: prop_id,
         };
         assert_eq!(prop, expected);
 

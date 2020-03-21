@@ -59,5 +59,4 @@ fn execute_remark() {
 
         expect_event(RawEvent::Remark(hash))
     })
-
 }

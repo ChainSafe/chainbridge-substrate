@@ -12,8 +12,8 @@ use sp_runtime::{
 };
 
 use crate::{self as example, Trait};
-use pallet_balances as balances;
 use chainbridge as bridge;
+use pallet_balances as balances;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -82,7 +82,7 @@ frame_support::construct_runtime!(
     {
         System: system::{Module, Call, Event<T>},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Event<T>, Config<T>},
+        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
         Example: example::{Module, Call, Event<T>}
     }
 );
@@ -105,9 +105,9 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
             balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],
         }),
     }
-        .build_storage()
-        .unwrap()
-        .into()
+    .build_storage()
+    .unwrap()
+    .into()
 }
 
 fn last_event() -> Event {

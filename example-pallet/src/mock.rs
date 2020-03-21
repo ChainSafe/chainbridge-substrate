@@ -11,7 +11,8 @@ use sp_runtime::{
     BuildStorage, Perbill,
 };
 
-use crate::{self as bridge, Trait};
+use crate::{self as example, Trait};
+use chainbridge as bridge;
 use pallet_balances as balances;
 
 parameter_types! {
@@ -38,7 +39,7 @@ impl frame_system::Trait for Test {
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
-    type AccountData = pallet_balances::AccountData<u64>;
+    type AccountData = balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
 }
@@ -59,11 +60,15 @@ impl pallet_balances::Trait for Test {
     type AccountStore = System;
 }
 
-impl Trait for Test {
+impl bridge::Trait for Test {
     type Event = Event;
     type Currency = Balances;
     // type ValidatorOrigin = EnsureSignedBy<One, u64>;
     type Proposal = Call;
+}
+
+impl Trait for Test {
+    type Event = Event;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
@@ -77,7 +82,8 @@ frame_support::construct_runtime!(
     {
         System: system::{Module, Call, Event<T>},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Event<T>, Config<T>}
+        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
+        Example: example::{Module, Call, Event<T>}
     }
 );
 
@@ -102,4 +108,15 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     .build_storage()
     .unwrap()
     .into()
+}
+
+fn last_event() -> Event {
+    system::Module::<Test>::events()
+        .pop()
+        .map(|e| e.event)
+        .expect("Event expected")
+}
+
+pub fn expect_event<E: Into<Event>>(e: E) {
+    assert_eq!(last_event(), e.into());
 }

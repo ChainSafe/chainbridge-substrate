@@ -4,7 +4,7 @@
 use chainbridge as bridge;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult};
 use frame_system::{self as system, ensure_signed, RawOrigin};
-use sp_runtime::traits::{EnsureOrigin};
+use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
 
 mod mock;

@@ -9,6 +9,9 @@ use frame_support::{
 use frame_system::{self as system, ensure_root, ensure_signed, RawOrigin};
 use sp_std::prelude::*;
 
+mod mock;
+mod tests;
+
 pub trait Trait: system::Trait + bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
@@ -37,12 +40,11 @@ decl_module! {
         fn deposit_event() = default;
 
         pub fn transfer_hash(origin, hash: T::Hash, recipient: Vec<u8>) -> DispatchResult {
-            ensure_root(origin)?;
+            ensure_signed(origin)?;
             //dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>
             let dest_id = vec![1];
             let token_id = vec![1];
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            //Self::commit_transfer(dest_id, recipient, token_id, metadata)
             <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 

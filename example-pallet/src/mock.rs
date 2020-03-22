@@ -92,7 +92,6 @@ pub const ENDOWED_ID: u64 = 0x1;
 pub const VALIDATOR_A: u64 = 0x2;
 pub const VALIDATOR_B: u64 = 0x3;
 pub const VALIDATOR_C: u64 = 0x4;
-pub const USER: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100;
 
 pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {

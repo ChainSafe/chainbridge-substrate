@@ -7,8 +7,6 @@ use super::mock::{
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 
-use sp_core::{blake2_256, H256};
-
 type System = frame_system::Module<Test>;
 
 #[test]

@@ -2,7 +2,7 @@
 
 use super::mock::{
     expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test,
-    ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
+    VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -30,7 +30,7 @@ fn transfer_hash() {
             dest_chain,
             1,
             recipient,
-            vec![1],
+            token_id,
             hash.as_ref().to_vec(),
         ));
     })

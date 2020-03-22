@@ -5,6 +5,7 @@ use super::mock::{
     ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
 };
 use super::*;
+use frame_support::dispatch::DispatchError;
 use frame_support::{assert_noop, assert_ok};
 
 use codec::Encode;
@@ -58,5 +59,24 @@ fn execute_remark() {
         ));
 
         expect_event(RawEvent::Remark(hash))
+    })
+}
+
+#[test]
+fn execute_remark_bad_origin() {
+    new_test_ext(2).execute_with(|| {
+        let hash: H256 = "ABC".using_encoded(blake2_256).into();
+
+        assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
+        // Don't allow any signed origin except from bridge addr
+        assert_noop!(
+            Example::remark(Origin::signed(VALIDATOR_A), hash),
+            DispatchError::BadOrigin
+        );
+        // Don't allow root calls
+        assert_noop!(
+            Example::remark(Origin::ROOT, hash),
+            DispatchError::BadOrigin
+        );
     })
 }

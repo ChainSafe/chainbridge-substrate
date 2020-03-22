@@ -4,6 +4,7 @@
 use chainbridge as bridge;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult};
 use frame_system::{self as system, ensure_signed, RawOrigin};
+use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
 
 mod mock;
@@ -11,6 +12,8 @@ mod tests;
 
 pub trait Trait: system::Trait + bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
+    type BridgeOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_event! {
@@ -47,7 +50,7 @@ decl_module! {
 
         /// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
-            ensure_signed(origin)?;
+            T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
             Ok(())
         }

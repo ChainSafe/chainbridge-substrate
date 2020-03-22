@@ -9,8 +9,7 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_io::hashing::blake2_256;
-use sp_runtime::traits::{AccountIdConversion, Dispatchable};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -326,5 +325,18 @@ impl<T: Trait> Module<T> {
         // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalFailed(prop_id));
         Ok(())
+    }
+}
+
+/// Simple ensure origin for the bridge account
+pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
+impl<T: Trait> EnsureOrigin<T::Origin> for EnsureBridge<T> {
+    type Success = T::AccountId;
+    fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+        let bridge_id = MODULE_ID.into_account();
+        o.into().and_then(|o| match o {
+            system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
+            r => Err(T::Origin::from(r)),
+        })
     }
 }

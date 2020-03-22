@@ -69,6 +69,7 @@ impl bridge::Trait for Test {
 
 impl Trait for Test {
     type Event = Event;
+    type BridgeOrigin = bridge::EnsureBridge<Test>;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;

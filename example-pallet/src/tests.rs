@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::mock::{
-    expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test,
-    VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
+    expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test, VALIDATOR_A,
+    VALIDATOR_B, VALIDATOR_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;

@@ -52,8 +52,6 @@ pub trait Trait: system::Trait {
 
 decl_event! {
     pub enum Event<T> where <T as frame_system::Trait>::AccountId {
-        /// New chainId set (to be removed)
-        ChainIdSet(u32),
         /// Vote threshold has changed (new_threshold)
         RelayerThresholdSet(u32),
         /// Chain now available for transfers (chain_id)
@@ -84,6 +82,8 @@ decl_event! {
 // TODO: Pass params to errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Provided chain Id is not valid
+        InvalidChainId
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
         /// Relayer already in set
@@ -106,7 +106,7 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
         /// The identifier for this chain.
-        ChainId: u32;
+        ChainId get(fn chain_id) config(): u32;
 
         Chains: map hasher(blake2_256) Vec<u8> => Option<TxCount>;
 
@@ -127,11 +127,6 @@ decl_storage! {
         config(relayers): Vec<T::AccountId>;
         build(|config| {
             Module::<T>::initialize_relayers(&config.relayers);
-            // Create Bridge account
-            // let _ = T::Currency::make_free_balance_be(
-            // 	&<Module<T>>::account_id(),
-            // 	T::Currency::minimum_balance(),
-            // );
         });
     }
 }
@@ -140,15 +135,6 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         // Default method for emitting events
         fn deposit_event() = default;
-
-        /// Sets the address used to identify this chain
-        pub fn set_id(origin, id: u32) -> DispatchResult {
-            ensure_root(origin)?;
-
-            ChainId::put(id);
-            Self::deposit_event(RawEvent::ChainIdSet(id));
-            Ok(())
-        }
 
         /// Sets the address used to identify this chain
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
@@ -162,6 +148,9 @@ decl_module! {
         /// Enables a chain ID as a destination for a bridge transfer
         pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
+
+            // Cannot whitelist this chain
+            ensure!(dest_id != Self::chain_id(), Error::<T>::InvalidChainId);
 
             Chains::insert(&id, TxCount { recv: 0, sent: 0 });
             Self::deposit_event(RawEvent::ChainWhitelisted(id));
@@ -230,6 +219,7 @@ decl_module! {
         /// bridge and updating the tx count for the respective chan.
         pub fn receive_asset(origin, dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
+
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
                 // Increment counter and store

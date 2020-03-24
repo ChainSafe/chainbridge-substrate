@@ -13,6 +13,7 @@ type System = frame_system::Module<Test>;
 fn genesis_relayers_generated() {
     new_test_ext(2).execute_with(|| {
         System::set_block_number(1);
+        assert_eq!(<ChainId>::get(), 1);
         assert_eq!(<Relayers<Test>>::get(RELAYER_A), true);
         assert_eq!(<Relayers<Test>>::get(RELAYER_B), true);
         assert_eq!(<Relayers<Test>>::get(RELAYER_C), true);
@@ -23,17 +24,6 @@ fn genesis_relayers_generated() {
             ENDOWED_BALANCE
         );
     });
-}
-
-#[test]
-fn set_get_id() {
-    new_test_ext(1).execute_with(|| {
-        let id = 99;
-        assert_ok!(Bridge::set_id(Origin::ROOT, id));
-        assert_eq!(<ChainId>::get(), id);
-
-        assert_events(vec![Event::bridge(RawEvent::ChainIdSet(id))]);
-    })
 }
 
 #[test]

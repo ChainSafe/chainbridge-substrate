@@ -2,11 +2,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult,
-    ensure,
-    traits::{Currency, ExistenceRequirement::AllowDeath},
-    Parameter,
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    traits::Currency, Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
@@ -20,8 +17,10 @@ mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
+type ChainId = u32;
+
 /// Tracks the transfer in/out of each respective chain
-#[derive(Encode, Decode, Clone, Default)]
+#[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
 struct TxCount {
     recv: u32,
     sent: u32,
@@ -29,8 +28,8 @@ struct TxCount {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
-    votes_for: Vec<AccountId>,
-    votes_against: Vec<AccountId>,
+    pub votes_for: Vec<AccountId>,
+    pub votes_against: Vec<AccountId>,
     // TODO: We may wish to store the Call here. While it is required to access the map internally,
     // externally we can enumarate the keys which would give us all existing propsoals
     // but would not reveal the calls.
@@ -55,21 +54,29 @@ pub trait Trait: system::Trait {
 
 decl_event! {
     pub enum Event<T> where <T as frame_system::Trait>::AccountId {
-        // dest_id, prop_id, to, token_id, metadata
-        AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// Vote threshold has changed (new_threshold)
+        RelayerThresholdSet(u32),
+        /// Chain now available for transfers (chain_id)
+        ChainWhitelisted(ChainId),
         /// Valdiator added to set
         RelayerAdded(AccountId),
         /// Relayer removed from set
         RelayerRemoved(AccountId),
 
+        /// Asset transfer is available for relaying (dest_id, prop_id, to, token_id, metadata)
+        AssetTransfer(ChainId, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+
         /// Vote submitted in favour of proposal
         VoteFor(u32, AccountId),
         /// Vot submitted against proposal
         VoteAgainst(u32, AccountId),
-
         /// Voting successful for a proposal
-        ProposalSucceeded(u32),
+        ProposalApproved(u32),
         /// Voting rejected a proposal
+        ProposalRejected(u32),
+        /// Execution of call succeeded
+        ProposalSucceeded(u32),
+        /// Execution of call failed
         ProposalFailed(u32),
     }
 }
@@ -77,6 +84,8 @@ decl_event! {
 // TODO: Pass params to errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Provided chain Id is not valid
+        InvalidChainId,
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
         /// Relayer already in set
@@ -93,19 +102,15 @@ decl_error! {
         ProposalDoesNotExist,
         /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
-
-        DebugInnerCallFailed,
     }
 }
 
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
-        /// The identifier for this chain.
-        ChainId: u32;
+        /// The ChainId for this chain.
+        ChainIdentifier get(fn chain_id) config(): u32;
 
-        Chains: map hasher(blake2_256) Vec<u8> => Option<TxCount>;
-
-        EndowedAccount get(fn endowed) config(): T::AccountId;
+        Chains: map hasher(blake2_256) ChainId => Option<TxCount>;
 
         RelayerThreshold get(fn relayer_threshold) config(): u32;
 
@@ -124,11 +129,6 @@ decl_storage! {
         config(relayers): Vec<T::AccountId>;
         build(|config| {
             Module::<T>::initialize_relayers(&config.relayers);
-            // Create Bridge account
-            // let _ = T::Currency::make_free_balance_be(
-            // 	&<Module<T>>::account_id(),
-            // 	T::Currency::minimum_balance(),
-            // );
         });
     }
 }
@@ -139,26 +139,23 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Sets the address used to identify this chain
-        pub fn set_id(origin, id: u32) -> DispatchResult {
-            ensure_root(origin)?;
-
-            ChainId::put(id);
-            Ok(())
-        }
-
-        /// Sets the address used to identify this chain
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             ensure_root(origin)?;
 
             RelayerThreshold::put(threshold);
+            Self::deposit_event(RawEvent::RelayerThresholdSet(threshold));
             Ok(())
         }
 
         /// Enables a chain ID as a destination for a bridge transfer
-        pub fn whitelist_chain(origin, id: Vec<u8>) -> DispatchResult {
+        pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
             ensure_root(origin)?;
 
+            // Cannot whitelist this chain
+            ensure!(id != Self::chain_id(), Error::<T>::InvalidChainId);
+
             Chains::insert(&id, TxCount { recv: 0, sent: 0 });
+            Self::deposit_event(RawEvent::ChainWhitelisted(id));
             Ok(())
         }
 
@@ -222,8 +219,9 @@ decl_module! {
 
         /// Completes an asset transfer to the chain by emitting an event to be acted on by the
         /// bridge and updating the tx count for the respective chan.
-        pub fn receive_asset(origin, dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
+        pub fn receive_asset(origin, dest_id: ChainId, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
+
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
                 // Increment counter and store
@@ -234,15 +232,6 @@ decl_module! {
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?
             }
-        }
-
-        // TODO: Should use correct amount type
-        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
-            let source: T::AccountId = <EndowedAccount<T>>::get();
-            T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
-            Ok(())
         }
     }
 }
@@ -317,13 +306,17 @@ impl<T: Trait> Module<T> {
     }
 
     fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSucceeded(prop_id));
-        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+        Self::deposit_event(RawEvent::ProposalApproved(prop_id));
+        match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
+            Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(prop_id)),
+            Err(_) => Self::deposit_event(RawEvent::ProposalFailed(prop_id)),
+        }
+        Ok(())
     }
 
     fn cancel_execution(prop_id: u32) -> DispatchResult {
         // TODO: Incomplete
-        Self::deposit_event(RawEvent::ProposalFailed(prop_id));
+        Self::deposit_event(RawEvent::ProposalRejected(prop_id));
         Ok(())
     }
 }

@@ -7,13 +7,13 @@ use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, Block as BlockT, IdentityLookup},
-    BuildStorage, Perbill,
+    traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
+    BuildStorage, ModuleId, Perbill,
 };
 
 use crate::{self as example, Trait};
 use chainbridge as bridge;
-use pallet_balances as balances;
+pub use pallet_balances as balances;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -88,21 +88,21 @@ frame_support::construct_runtime!(
     }
 );
 
-pub const ENDOWED_ID: u64 = 0x1;
-pub const VALIDATOR_A: u64 = 0x2;
-pub const VALIDATOR_B: u64 = 0x3;
-pub const VALIDATOR_C: u64 = 0x4;
+pub const RELAYER_A: u64 = 0x2;
+pub const RELAYER_B: u64 = 0x3;
+pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100;
 
 pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
+    let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
         bridge: Some(bridge::GenesisConfig {
-            endowed: ENDOWED_ID,
-            relayers: vec![VALIDATOR_A, VALIDATOR_B, VALIDATOR_C],
+            chain_id: 0,
+            relayers: vec![RELAYER_A, RELAYER_B, RELAYER_C],
             relayer_threshold: threshold,
         }),
         balances: Some(balances::GenesisConfig {
-            balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],
+            balances: vec![(bridge_id, ENDOWED_BALANCE)],
         }),
     }
     .build_storage()
@@ -119,4 +119,37 @@ fn last_event() -> Event {
 
 pub fn expect_event<E: Into<Event>>(e: E) {
     assert_eq!(last_event(), e.into());
+}
+
+// Asserts that the event was emitted at some point.
+pub fn event_exists<E: Into<Event>>(e: E) {
+    let actual: Vec<Event> = system::Module::<Test>::events()
+        .iter()
+        .map(|e| e.event.clone())
+        .collect();
+    let e: Event = e.into();
+    let mut exists = false;
+    for evt in actual {
+        if evt == e {
+            exists = true;
+            break;
+        }
+    }
+    assert!(exists);
+}
+
+// Checks events against the latest. A contiguous set of events must be provided. They must
+// include the most recent event, but do not have to include every past event.
+pub fn assert_events(mut expected: Vec<Event>) {
+    let mut actual: Vec<Event> = system::Module::<Test>::events()
+        .iter()
+        .map(|e| e.event.clone())
+        .collect();
+
+    expected.reverse();
+
+    for evt in expected {
+        let next = actual.pop().expect("event expected");
+        assert_eq!(next, evt.into(), "Events don't match");
+    }
 }

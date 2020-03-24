@@ -7,12 +7,12 @@ use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, Block as BlockT, IdentityLookup},
+    traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
     BuildStorage, Perbill,
 };
 
 use crate::{self as bridge, Trait};
-use pallet_balances as balances;
+pub use pallet_balances as balances;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -77,29 +77,45 @@ frame_support::construct_runtime!(
     {
         System: system::{Module, Call, Event<T>},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>}
+        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
     }
 );
 
-pub const ENDOWED_ID: u64 = 0x1;
-pub const VALIDATOR_A: u64 = 0x2;
-pub const VALIDATOR_B: u64 = 0x3;
-pub const VALIDATOR_C: u64 = 0x4;
-pub const USER: u64 = 0x4;
-pub const ENDOWED_BALANCE: u64 = 100;
+// pub const BRIDGE_ID: u64 =
+pub const RELAYER_A: u64 = 0x2;
+pub const RELAYER_B: u64 = 0x3;
+pub const RELAYER_C: u64 = 0x4;
+pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
+    let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
         bridge: Some(bridge::GenesisConfig {
-            endowed: ENDOWED_ID,
-            relayers: vec![VALIDATOR_A, VALIDATOR_B, VALIDATOR_C],
+            chain_id: 1,
+            relayers: vec![RELAYER_A, RELAYER_B, RELAYER_C],
             relayer_threshold: threshold,
         }),
         balances: Some(balances::GenesisConfig {
-            balances: vec![(ENDOWED_ID, ENDOWED_BALANCE)],
+            balances: vec![(bridge_id, ENDOWED_BALANCE)],
         }),
     }
     .build_storage()
     .unwrap()
     .into()
+}
+
+// Checks events against the latest. A contiguous set of events must be provided. They must
+// include the most recent event, but do not have to include every past event.
+pub fn assert_events(mut expected: Vec<Event>) {
+    let mut actual: Vec<Event> = system::Module::<Test>::events()
+        .iter()
+        .map(|e| e.event.clone())
+        .collect();
+
+    expected.reverse();
+
+    for evt in expected {
+        let next = actual.pop().expect("event expected");
+        assert_eq!(next, evt.into(), "Events don't match");
+    }
 }

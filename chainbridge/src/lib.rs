@@ -2,11 +2,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult,
-    ensure,
-    traits::{Currency, ExistenceRequirement::AllowDeath},
-    Parameter,
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    traits::Currency, Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
@@ -29,8 +26,8 @@ struct TxCount {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
-    votes_for: Vec<AccountId>,
-    votes_against: Vec<AccountId>,
+    pub votes_for: Vec<AccountId>,
+    pub votes_against: Vec<AccountId>,
     // TODO: We may wish to store the Call here. While it is required to access the map internally,
     // externally we can enumarate the keys which would give us all existing propsoals
     // but would not reveal the calls.
@@ -103,8 +100,6 @@ decl_error! {
         ProposalDoesNotExist,
         /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
-
-        DebugInnerCallFailed,
     }
 }
 
@@ -245,16 +240,6 @@ decl_module! {
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?
             }
-        }
-
-        // TODO: Should use correct amount type
-        // TODO: Move to example-pallet
-        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
-            let source = Self::account_id();
-            T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
-            Ok(())
         }
     }
 }

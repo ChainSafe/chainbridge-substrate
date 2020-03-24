@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::mock::{
-    assert_events, balances, new_test_ext, Balances, Bridge, Event, Origin, Test, ENDOWED_BALANCE,
+    assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, ENDOWED_BALANCE,
     RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
@@ -18,6 +18,10 @@ fn genesis_relayers_generated() {
         assert_eq!(<Relayers<Test>>::get(RELAYER_C), true);
         assert_eq!(<RelayerCount>::get(), 3);
         assert_eq!(<RelayerThreshold>::get(), 2);
+        assert_eq!(
+            Balances::free_balance(Bridge::account_id()),
+            ENDOWED_BALANCE
+        );
     });
 }
 
@@ -100,29 +104,6 @@ fn asset_transfer_invalid_chain() {
 }
 
 #[test]
-fn transfer() {
-    new_test_ext(1).execute_with(|| {
-        // Check inital state
-        let bridge_id: u64 = Bridge::account_id();
-        assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
-        // Transfer and check result
-        assert_ok!(Bridge::transfer(
-            Origin::signed(Bridge::account_id()),
-            RELAYER_A,
-            10
-        ));
-        assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
-
-        assert_events(vec![Event::balances(balances::RawEvent::Transfer(
-            Bridge::account_id(),
-            RELAYER_A,
-            10,
-        ))]);
-    })
-}
-
-#[test]
 fn add_remove_relayer() {
     new_test_ext(1).execute_with(|| {
         assert_eq!(Bridge::relayer_count(), 3);
@@ -155,16 +136,16 @@ fn add_remove_relayer() {
     })
 }
 
-fn make_proposal(to: u64, amount: u32) -> mock::Call {
-    mock::Call::Bridge(crate::Call::transfer(to, amount))
+fn make_proposal(r: Vec<u8>) -> mock::Call {
+    Call::System(system::Call::remark(r))
 }
 
 #[test]
-fn create_sucessful_transfer_proposal() {
+fn create_sucessful_proposal() {
     new_test_ext(2).execute_with(|| {
         let prop_id = 1;
 
-        let proposal = make_proposal(RELAYER_A, 10);
+        let proposal = make_proposal(vec![10]);
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 
@@ -207,35 +188,22 @@ fn create_sucessful_transfer_proposal() {
         };
         assert_eq!(prop, expected);
 
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
-        assert_eq!(
-            Balances::free_balance(Bridge::account_id()),
-            ENDOWED_BALANCE - 10
-        );
-
         assert_events(vec![
             Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_A)),
             Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_B)),
             Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_C)),
             Event::bridge(RawEvent::ProposalApproved(prop_id)),
-            Event::system(system::RawEvent::NewAccount(RELAYER_A)),
-            Event::balances(balances::RawEvent::Endowed(RELAYER_A, 10)),
-            Event::balances(balances::RawEvent::Transfer(
-                Bridge::account_id(),
-                RELAYER_A,
-                10,
-            )),
             Event::bridge(RawEvent::ProposalSucceeded(prop_id)),
         ]);
     })
 }
 
 #[test]
-fn create_unsucessful_transfer_proposal() {
+fn create_unsucessful_proposal() {
     new_test_ext(2).execute_with(|| {
         let prop_id = 1;
 
-        let proposal = make_proposal(RELAYER_B, 10);
+        let proposal = make_proposal(vec![11]);
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 

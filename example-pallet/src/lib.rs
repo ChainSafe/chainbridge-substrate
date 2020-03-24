@@ -2,7 +2,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use chainbridge as bridge;
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult};
+use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath};
+use frame_support::{decl_event, decl_module, dispatch::DispatchResult};
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
@@ -24,16 +25,6 @@ decl_event! {
     }
 }
 
-// decl_error! {
-//     pub enum Error for Module<T: Trait> {
-//
-//     }
-// }
-
-// decl_storage! {
-//     trait Store for Module<T: Trait> as Bridge {}
-// }
-
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         // Default method for emitting events
@@ -51,7 +42,7 @@ decl_module! {
         // TODO: Should use correct amount type
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
-            let source = Self::account_id();
+            let source = <bridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }

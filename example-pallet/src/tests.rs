@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::mock::{
-    expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test,
-    ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A, VALIDATOR_B, VALIDATOR_C,
+    expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test, RELAYER_A,
+    RELAYER_B,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -48,12 +48,12 @@ fn execute_remark() {
         let prop_id = 1;
 
         assert_ok!(Bridge::create_proposal(
-            Origin::signed(VALIDATOR_A),
+            Origin::signed(RELAYER_A),
             prop_id,
             Box::new(proposal.clone())
         ));
         assert_ok!(Bridge::approve(
-            Origin::signed(VALIDATOR_B),
+            Origin::signed(RELAYER_B),
             prop_id,
             Box::new(proposal.clone())
         ));
@@ -70,7 +70,7 @@ fn execute_remark_bad_origin() {
         assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
         // Don't allow any signed origin except from bridge addr
         assert_noop!(
-            Example::remark(Origin::signed(VALIDATOR_A), hash),
+            Example::remark(Origin::signed(RELAYER_A), hash),
             DispatchError::BadOrigin
         );
         // Don't allow root calls

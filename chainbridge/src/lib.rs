@@ -105,8 +105,6 @@ decl_storage! {
 
         Chains: map hasher(blake2_256) Vec<u8> => Option<TxCount>;
 
-        EndowedAccount get(fn endowed) config(): T::AccountId;
-
         RelayerThreshold get(fn relayer_threshold) config(): u32;
 
         pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
@@ -237,10 +235,11 @@ decl_module! {
         }
 
         // TODO: Should use correct amount type
+        // TODO: Move to example-pallet
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
-            let source: T::AccountId = <EndowedAccount<T>>::get();
+            let source = Self::account_id();
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }

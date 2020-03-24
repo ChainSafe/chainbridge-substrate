@@ -13,7 +13,7 @@ type System = frame_system::Module<Test>;
 fn genesis_relayers_generated() {
     new_test_ext(2).execute_with(|| {
         System::set_block_number(1);
-        assert_eq!(<ChainId>::get(), 1);
+        assert_eq!(<ChainIdentifier>::get(), 1);
         assert_eq!(<Relayers<Test>>::get(RELAYER_A), true);
         assert_eq!(<Relayers<Test>>::get(RELAYER_B), true);
         assert_eq!(<Relayers<Test>>::get(RELAYER_C), true);
@@ -24,6 +24,19 @@ fn genesis_relayers_generated() {
             ENDOWED_BALANCE
         );
     });
+}
+
+#[test]
+fn whitelist_chain() {
+    new_test_ext(1).execute_with(|| {
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, 0));
+        assert_noop!(
+            Bridge::whitelist_chain(Origin::ROOT, Bridge::chain_id()),
+            Error::<Test>::InvalidChainId
+        );
+
+        assert_events(vec![Event::bridge(RawEvent::ChainWhitelisted(0))]);
+    })
 }
 
 #[test]
@@ -41,7 +54,7 @@ fn set_get_threshold() {
 #[test]
 fn asset_transfer_success() {
     new_test_ext(1).execute_with(|| {
-        let dest_id = vec![1];
+        let dest_id = 2;
         let to = vec![2];
         let token_id = vec![3];
         let metadata = vec![];
@@ -70,9 +83,9 @@ fn asset_transfer_success() {
 #[test]
 fn asset_transfer_invalid_chain() {
     new_test_ext(1).execute_with(|| {
-        let chain_id = vec![1];
+        let chain_id = 2;
         let to = vec![2];
-        let bad_dest_id = vec![3];
+        let bad_dest_id = 3;
         let token_id = vec![4];
         let metadata = vec![];
 

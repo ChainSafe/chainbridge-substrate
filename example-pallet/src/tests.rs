@@ -22,7 +22,7 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 #[test]
 fn transfer_hash() {
     new_test_ext(2).execute_with(|| {
-        let dest_chain = vec![1];
+        let dest_chain = 1;
         let token_id = vec![1];
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![99];
@@ -38,7 +38,7 @@ fn transfer_hash() {
             dest_chain,
             1,
             recipient,
-            vec![1],
+            token_id,
             hash.as_ref().to_vec(),
         ));
     })

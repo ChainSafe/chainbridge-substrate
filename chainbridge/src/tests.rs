@@ -1,12 +1,11 @@
 #![cfg(test)]
 
 use super::mock::{
-    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
+    assert_events, balances, new_test_ext, Balances, Bridge, Event, Origin, Test, ENDOWED_BALANCE,
+    RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-
-use sp_core::{blake2_256, H256};
 
 type System = frame_system::Module<Test>;
 
@@ -25,8 +24,11 @@ fn genesis_relayers_generated() {
 #[test]
 fn set_get_id() {
     new_test_ext(1).execute_with(|| {
-        assert_ok!(Bridge::set_id(Origin::ROOT, 99));
-        assert_eq!(<ChainId>::get(), 99)
+        let id = 99;
+        assert_ok!(Bridge::set_id(Origin::ROOT, id));
+        assert_eq!(<ChainId>::get(), id);
+
+        assert_events(vec![Event::bridge(RawEvent::ChainIdSet(id))]);
     })
 }
 
@@ -36,26 +38,38 @@ fn set_get_threshold() {
         assert_eq!(<RelayerThreshold>::get(), 1);
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, 5));
-        assert_eq!(<RelayerThreshold>::get(), 5)
+        assert_eq!(<RelayerThreshold>::get(), 5);
+
+        assert_events(vec![Event::bridge(RawEvent::RelayerThresholdSet(5))]);
     })
 }
 
 #[test]
 fn asset_transfer_success() {
     new_test_ext(1).execute_with(|| {
-        let chain_id = vec![1];
+        let dest_id = vec![1];
         let to = vec![2];
         let token_id = vec![3];
         let metadata = vec![];
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
         assert_ok!(Bridge::receive_asset(
             Origin::ROOT,
-            chain_id.clone(),
+            dest_id.clone(),
             to.clone(),
             token_id.clone(),
             metadata.clone()
         ));
+        assert_events(vec![
+            Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
+            Event::bridge(RawEvent::AssetTransfer(
+                dest_id.clone(),
+                1,
+                to,
+                token_id,
+                metadata,
+            )),
+        ]);
     })
 }
 
@@ -68,11 +82,20 @@ fn asset_transfer_invalid_chain() {
         let token_id = vec![4];
         let metadata = vec![];
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
         assert_noop!(
-            Bridge::receive_asset(Origin::ROOT, bad_dest_id, to, token_id, metadata),
+            Bridge::receive_asset(
+                Origin::ROOT,
+                bad_dest_id,
+                to.clone(),
+                token_id.clone(),
+                metadata.clone()
+            ),
             Error::<Test>::ChainNotWhitelisted
         );
+        assert_events(vec![Event::bridge(RawEvent::ChainWhitelisted(
+            chain_id.clone(),
+        ))]);
     })
 }
 
@@ -85,11 +108,17 @@ fn transfer() {
         // Transfer and check result
         assert_ok!(Bridge::transfer(
             Origin::signed(Bridge::account_id()),
-            2,
+            RELAYER_A,
             10
         ));
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
-        assert_eq!(Balances::free_balance(2), 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+
+        assert_events(vec![Event::balances(balances::RawEvent::Transfer(
+            Bridge::account_id(),
+            RELAYER_A,
+            10,
+        ))]);
     })
 }
 
@@ -118,6 +147,11 @@ fn add_remove_relayer() {
             Bridge::remove_relayer(Origin::ROOT, 99),
             Error::<Test>::RelayerInvalid
         );
+
+        assert_events(vec![
+            Event::bridge(RawEvent::RelayerAdded(99)),
+            Event::bridge(RawEvent::RelayerRemoved(99)),
+        ]);
     })
 }
 
@@ -178,6 +212,21 @@ fn create_sucessful_transfer_proposal() {
             Balances::free_balance(Bridge::account_id()),
             ENDOWED_BALANCE - 10
         );
+
+        assert_events(vec![
+            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_A)),
+            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_B)),
+            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_C)),
+            Event::bridge(RawEvent::ProposalApproved(prop_id)),
+            Event::system(system::RawEvent::NewAccount(RELAYER_A)),
+            Event::balances(balances::RawEvent::Endowed(RELAYER_A, 10)),
+            Event::balances(balances::RawEvent::Transfer(
+                Bridge::account_id(),
+                RELAYER_A,
+                10,
+            )),
+            Event::bridge(RawEvent::ProposalSucceeded(prop_id)),
+        ]);
     })
 }
 
@@ -234,5 +283,12 @@ fn create_unsucessful_transfer_proposal() {
             Balances::free_balance(Bridge::account_id()),
             ENDOWED_BALANCE
         );
+
+        assert_events(vec![
+            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_A)),
+            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_B)),
+            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_C)),
+            Event::bridge(RawEvent::ProposalRejected(prop_id)),
+        ]);
     })
 }

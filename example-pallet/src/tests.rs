@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::mock::{
-    expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test, RELAYER_A,
-    RELAYER_B,
+    event_exists, expect_event, new_test_ext, Balances, Bridge, Call, Event, Example, Origin, Test,
+    RELAYER_A, RELAYER_B,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -58,7 +58,7 @@ fn execute_remark() {
             Box::new(proposal.clone())
         ));
 
-        expect_event(RawEvent::Remark(hash))
+        event_exists(RawEvent::Remark(hash));
     })
 }
 

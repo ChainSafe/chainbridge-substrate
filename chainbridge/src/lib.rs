@@ -93,8 +93,6 @@ decl_error! {
         ProposalDoesNotExist,
         /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
-
-        DebugInnerCallFailed,
     }
 }
 
@@ -232,16 +230,6 @@ decl_module! {
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?
             }
-        }
-
-        // TODO: Should use correct amount type
-        // TODO: Move to example-pallet
-        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(who == Self::account_id(), Error::<T>::DebugInnerCallFailed);
-            let source = Self::account_id();
-            T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
-            Ok(())
         }
     }
 }

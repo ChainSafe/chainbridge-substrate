@@ -121,8 +121,8 @@ fn add_remove_relayer() {
     })
 }
 
-fn make_proposal(to: u64, amount: u32) -> mock::Call {
-    mock::Call::Bridge(crate::Call::transfer(to, amount))
+fn make_proposal(r: Vec<u8>) -> mock::Call {
+    mock::Call::Bridge(system::Call::remark(r))
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn create_sucessful_transfer_proposal() {
     new_test_ext(2).execute_with(|| {
         let prop_id = 1;
 
-        let proposal = make_proposal(RELAYER_A, 10);
+        let proposal = make_proposal(vec![10]);
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 

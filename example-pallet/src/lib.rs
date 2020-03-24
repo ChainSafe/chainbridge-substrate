@@ -48,6 +48,14 @@ decl_module! {
             <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 
+        // TODO: Should use correct amount type
+        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
+            T::BridgeOrigin::ensure_origin(origin)?;
+            let source = Self::account_id();
+            T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+            Ok(())
+        }
+
         /// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;

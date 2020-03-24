@@ -77,7 +77,7 @@ frame_support::construct_runtime!(
     {
         System: system::{Module, Call, Event<T>},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>}
+        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
     }
 );
 

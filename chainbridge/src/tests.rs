@@ -1,8 +1,7 @@
 #![cfg(test)]
 
 use super::mock::{
-    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, ENDOWED_ID, USER, VALIDATOR_A,
-    VALIDATOR_B, VALIDATOR_C,
+    new_test_ext, Balances, Bridge, Origin, Test, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
@@ -15,9 +14,9 @@ type System = frame_system::Module<Test>;
 fn genesis_relayers_generated() {
     new_test_ext(2).execute_with(|| {
         System::set_block_number(1);
-        assert_eq!(<Relayers<Test>>::get(VALIDATOR_A), true);
-        assert_eq!(<Relayers<Test>>::get(VALIDATOR_B), true);
-        assert_eq!(<Relayers<Test>>::get(VALIDATOR_C), true);
+        assert_eq!(<Relayers<Test>>::get(RELAYER_A), true);
+        assert_eq!(<Relayers<Test>>::get(RELAYER_B), true);
+        assert_eq!(<Relayers<Test>>::get(RELAYER_C), true);
         assert_eq!(<RelayerCount>::get(), 3);
         assert_eq!(<RelayerThreshold>::get(), 2);
     });
@@ -81,15 +80,15 @@ fn asset_transfer_invalid_chain() {
 fn transfer() {
     new_test_ext(1).execute_with(|| {
         // Check inital state
-        assert_eq!(<EndowedAccount<Test>>::get(), ENDOWED_ID);
-        assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE);
+        let bridge_id: u64 = Bridge::account_id();
+        assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
         // Transfer and check result
         assert_ok!(Bridge::transfer(
             Origin::signed(Bridge::account_id()),
             2,
             10
         ));
-        assert_eq!(Balances::free_balance(&ENDOWED_ID), ENDOWED_BALANCE - 10);
+        assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(2), 10);
     })
 }
@@ -100,7 +99,7 @@ fn add_remove_relayer() {
         assert_eq!(Bridge::relayer_count(), 3);
         // Already exists
         assert_noop!(
-            Bridge::add_relayer(Origin::ROOT, VALIDATOR_A),
+            Bridge::add_relayer(Origin::ROOT, RELAYER_A),
             Error::<Test>::RelayerAlreadyExists
         );
 
@@ -131,51 +130,54 @@ fn create_sucessful_transfer_proposal() {
     new_test_ext(2).execute_with(|| {
         let prop_id = 1;
 
-        let proposal = make_proposal(USER, 10);
+        let proposal = make_proposal(RELAYER_A, 10);
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::create_proposal(
-            Origin::signed(VALIDATOR_A),
+            Origin::signed(RELAYER_A),
             prop_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A],
+            votes_for: vec![RELAYER_A],
             votes_against: vec![],
         };
         assert_eq!(prop, expected);
 
         // Second relayer votes against
         assert_ok!(Bridge::reject(
-            Origin::signed(VALIDATOR_B),
+            Origin::signed(RELAYER_B),
             prop_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A],
-            votes_against: vec![VALIDATOR_B],
+            votes_for: vec![RELAYER_A],
+            votes_against: vec![RELAYER_B],
         };
         assert_eq!(prop, expected);
 
         // Third relayer votes in favour
         assert_ok!(Bridge::approve(
-            Origin::signed(VALIDATOR_C),
+            Origin::signed(RELAYER_C),
             prop_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A, VALIDATOR_C],
-            votes_against: vec![VALIDATOR_B],
+            votes_for: vec![RELAYER_A, RELAYER_C],
+            votes_against: vec![RELAYER_B],
         };
         assert_eq!(prop, expected);
 
-        assert_eq!(Balances::free_balance(USER), 10);
-        assert_eq!(Balances::free_balance(ENDOWED_ID), ENDOWED_BALANCE - 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+        assert_eq!(
+            Balances::free_balance(Bridge::account_id()),
+            ENDOWED_BALANCE - 10
+        );
     })
 }
 
@@ -184,50 +186,53 @@ fn create_unsucessful_transfer_proposal() {
     new_test_ext(2).execute_with(|| {
         let prop_id = 1;
 
-        let proposal = make_proposal(VALIDATOR_B, 10);
+        let proposal = make_proposal(RELAYER_B, 10);
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::create_proposal(
-            Origin::signed(VALIDATOR_A),
+            Origin::signed(RELAYER_A),
             prop_id.clone(),
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A],
+            votes_for: vec![RELAYER_A],
             votes_against: vec![],
         };
         assert_eq!(prop, expected);
 
         // Second relayer votes against
         assert_ok!(Bridge::reject(
-            Origin::signed(VALIDATOR_B),
+            Origin::signed(RELAYER_B),
             prop_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A],
-            votes_against: vec![VALIDATOR_B],
+            votes_for: vec![RELAYER_A],
+            votes_against: vec![RELAYER_B],
         };
         assert_eq!(prop, expected);
 
         // Third relayer votes against
         assert_ok!(Bridge::reject(
-            Origin::signed(VALIDATOR_C),
+            Origin::signed(RELAYER_C),
             prop_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
-            votes_for: vec![VALIDATOR_A],
-            votes_against: vec![VALIDATOR_B, VALIDATOR_C],
+            votes_for: vec![RELAYER_A],
+            votes_against: vec![RELAYER_B, RELAYER_C],
         };
         assert_eq!(prop, expected);
 
-        assert_eq!(Balances::free_balance(VALIDATOR_B), 0);
-        assert_eq!(Balances::free_balance(ENDOWED_ID), ENDOWED_BALANCE);
+        assert_eq!(Balances::free_balance(RELAYER_B), 0);
+        assert_eq!(
+            Balances::free_balance(Bridge::account_id()),
+            ENDOWED_BALANCE
+        );
     })
 }

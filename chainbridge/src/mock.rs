@@ -12,7 +12,7 @@ use sp_runtime::{
 };
 
 use crate::{self as bridge, Trait};
-use pallet_balances as balances;
+pub use pallet_balances as balances;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -101,4 +101,20 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     .build_storage()
     .unwrap()
     .into()
+}
+
+// Checks events against the latest. A contiguous set of events must be provided. They must
+// include the most recent event, but do not have to include every past event.
+pub fn assert_events(mut expected: Vec<Event>) {
+    let mut actual: Vec<Event> = system::Module::<Test>::events()
+        .iter()
+        .map(|e| e.event.clone())
+        .collect();
+
+    expected.reverse();
+
+    for evt in expected {
+        let next = actual.pop().expect("event expected");
+        assert_eq!(next, evt.into(), "Events don't match");
+    }
 }

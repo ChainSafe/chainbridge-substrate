@@ -55,27 +55,31 @@ pub trait Trait: system::Trait {
 
 decl_event! {
     pub enum Event<T> where <T as frame_system::Trait>::AccountId {
+        /// New chainId set (to be removed)
         ChainIdSet(u32),
+        /// Vote threshold has changed (new_threshold)
         RelayerThresholdSet(u32),
+        /// Chain now available for transfers (chain_id)
         ChainWhitelisted(Vec<u8>),
-        // dest_id, prop_id, to, token_id, metadata
-        AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
         /// Valdiator added to set
         RelayerAdded(AccountId),
         /// Relayer removed from set
         RelayerRemoved(AccountId),
 
+        /// Asset transfer is available for relaying (dest_id, prop_id, to, token_id, metadata)
+        AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+
         /// Vote submitted in favour of proposal
         VoteFor(u32, AccountId),
         /// Vot submitted against proposal
         VoteAgainst(u32, AccountId),
-
         /// Voting successful for a proposal
         ProposalApproved(u32),
         /// Voting rejected a proposal
         ProposalRejected(u32),
-
+        /// Execution of call succeeded
         ProposalSucceeded(u32),
+        /// Execution of call failed
         ProposalFailed(u32),
     }
 }

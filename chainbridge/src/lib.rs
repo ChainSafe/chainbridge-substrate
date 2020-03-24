@@ -55,21 +55,31 @@ pub trait Trait: system::Trait {
 
 decl_event! {
     pub enum Event<T> where <T as frame_system::Trait>::AccountId {
-        // dest_id, prop_id, to, token_id, metadata
-        AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// New chainId set (to be removed)
+        ChainIdSet(u32),
+        /// Vote threshold has changed (new_threshold)
+        RelayerThresholdSet(u32),
+        /// Chain now available for transfers (chain_id)
+        ChainWhitelisted(Vec<u8>),
         /// Valdiator added to set
         RelayerAdded(AccountId),
         /// Relayer removed from set
         RelayerRemoved(AccountId),
 
+        /// Asset transfer is available for relaying (dest_id, prop_id, to, token_id, metadata)
+        AssetTransfer(Vec<u8>, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+
         /// Vote submitted in favour of proposal
         VoteFor(u32, AccountId),
         /// Vot submitted against proposal
         VoteAgainst(u32, AccountId),
-
         /// Voting successful for a proposal
-        ProposalSucceeded(u32),
+        ProposalApproved(u32),
         /// Voting rejected a proposal
+        ProposalRejected(u32),
+        /// Execution of call succeeded
+        ProposalSucceeded(u32),
+        /// Execution of call failed
         ProposalFailed(u32),
     }
 }
@@ -141,6 +151,7 @@ decl_module! {
             ensure_root(origin)?;
 
             ChainId::put(id);
+            Self::deposit_event(RawEvent::ChainIdSet(id));
             Ok(())
         }
 
@@ -149,6 +160,7 @@ decl_module! {
             ensure_root(origin)?;
 
             RelayerThreshold::put(threshold);
+            Self::deposit_event(RawEvent::RelayerThresholdSet(threshold));
             Ok(())
         }
 
@@ -157,6 +169,7 @@ decl_module! {
             ensure_root(origin)?;
 
             Chains::insert(&id, TxCount { recv: 0, sent: 0 });
+            Self::deposit_event(RawEvent::ChainWhitelisted(id));
             Ok(())
         }
 
@@ -316,13 +329,17 @@ impl<T: Trait> Module<T> {
     }
 
     fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalSucceeded(prop_id));
-        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+        Self::deposit_event(RawEvent::ProposalApproved(prop_id));
+        match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
+            Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(prop_id)),
+            Err(_) => Self::deposit_event(RawEvent::ProposalFailed(prop_id)),
+        }
+        Ok(())
     }
 
     fn cancel_execution(prop_id: u32) -> DispatchResult {
         // TODO: Incomplete
-        Self::deposit_event(RawEvent::ProposalFailed(prop_id));
+        Self::deposit_event(RawEvent::ProposalRejected(prop_id));
         Ok(())
     }
 }

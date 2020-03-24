@@ -119,3 +119,20 @@ fn last_event() -> Event {
 pub fn expect_event<E: Into<Event>>(e: E) {
     assert_eq!(last_event(), e.into());
 }
+
+// Asserts that the event was emitted at some point.
+pub fn event_exists<E: Into<Event>>(e: E) {
+    let actual: Vec<Event> = system::Module::<Test>::events()
+        .iter()
+        .map(|e| e.event.clone())
+        .collect();
+    let e: Event = e.into();
+    let mut exists = false;
+    for evt in actual {
+        if evt == e {
+            exists = true;
+            break;
+        }
+    }
+    assert!(exists);
+}

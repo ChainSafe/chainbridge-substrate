@@ -30,10 +30,9 @@ decl_module! {
         // Default method for emitting events
         fn deposit_event() = default;
 
-        pub fn transfer_hash(origin, hash: T::Hash, recipient: Vec<u8>) -> DispatchResult {
+        pub fn transfer_hash(origin, hash: T::Hash, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
             ensure_signed(origin)?;
-            //dest_id: Vec<u8>, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>
-            let dest_id = 0;
+
             let token_id = vec![1];
             let metadata: Vec<u8> = hash.as_ref().to_vec();
             <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)

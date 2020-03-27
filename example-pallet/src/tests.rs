@@ -31,7 +31,8 @@ fn transfer_hash() {
         assert_ok!(Example::transfer_hash(
             Origin::signed(1),
             hash.clone(),
-            recipient.clone()
+            recipient.clone(),
+            dest_chain,
         ));
 
         expect_event(bridge::RawEvent::AssetTransfer(

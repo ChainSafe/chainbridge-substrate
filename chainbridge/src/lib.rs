@@ -224,10 +224,10 @@ decl_module! {
 
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
+                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.recv, to, token_id, metadata));
                 // Increment counter and store
                 counter.recv += 1;
                 Chains::insert(&dest_id, counter.clone());
-                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.recv, to, token_id, metadata));
                 Ok(())
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?

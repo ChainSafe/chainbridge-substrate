@@ -71,7 +71,7 @@ fn asset_transfer_success() {
             Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
             Event::bridge(RawEvent::AssetTransfer(
                 dest_id.clone(),
-                1,
+                0,
                 to,
                 token_id,
                 metadata,

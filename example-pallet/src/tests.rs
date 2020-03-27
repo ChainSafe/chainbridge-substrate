@@ -22,7 +22,7 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 #[test]
 fn transfer_hash() {
     new_test_ext(2).execute_with(|| {
-        let dest_chain = 1;
+        let dest_chain = 0;
         let token_id = vec![1];
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![99];
@@ -31,12 +31,13 @@ fn transfer_hash() {
         assert_ok!(Example::transfer_hash(
             Origin::signed(1),
             hash.clone(),
-            recipient.clone()
+            recipient.clone(),
+            dest_chain,
         ));
 
         expect_event(bridge::RawEvent::AssetTransfer(
             dest_chain,
-            1,
+            0,
             recipient,
             token_id,
             hash.as_ref().to_vec(),

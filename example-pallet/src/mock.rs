@@ -97,7 +97,7 @@ pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
         bridge: Some(bridge::GenesisConfig {
-            chain_id: 0,
+            chain_id: 1,
             relayers: vec![RELAYER_A, RELAYER_B, RELAYER_C],
             relayer_threshold: threshold,
         }),

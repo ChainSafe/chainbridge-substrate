@@ -14,7 +14,7 @@ mod tests;
 pub trait Trait: system::Trait + bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
-    type BridgeOrigin: EnsureOrigin<Self::Origin>;
+    type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 }
 
 decl_event! {
@@ -27,9 +27,9 @@ decl_event! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        // Default method for emitting events
         fn deposit_event() = default;
 
+        /// Transfers an arbitrary hash to some recipient on a (whitelisted) destination chain.
         pub fn transfer_hash(origin, hash: T::Hash, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -38,10 +38,9 @@ decl_module! {
             <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 
-        // TODO: Should use correct amount type
+        /// Executes a simple currency transfer using the bridge account as the source
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
-            T::BridgeOrigin::ensure_origin(origin)?;
-            let source = <bridge::Module<T>>::account_id();
+            let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }

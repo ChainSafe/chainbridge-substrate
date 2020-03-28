@@ -52,12 +52,12 @@ fn execute_remark() {
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
 
-        assert_ok!(Bridge::create_proposal(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
             Box::new(proposal.clone())
         ));
-        assert_ok!(Bridge::approve(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
             Box::new(proposal.clone())
@@ -119,7 +119,7 @@ fn create_sucessful_transfer_proposal() {
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
-        assert_ok!(Bridge::create_proposal(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
             Box::new(proposal.clone())
@@ -145,7 +145,7 @@ fn create_sucessful_transfer_proposal() {
         assert_eq!(prop, expected);
 
         // Third relayer votes in favour
-        assert_ok!(Bridge::approve(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
             Box::new(proposal.clone())

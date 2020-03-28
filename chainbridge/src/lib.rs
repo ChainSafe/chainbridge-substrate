@@ -58,7 +58,7 @@ decl_event! {
         RelayerThresholdSet(u32),
         /// Chain now available for transfers (chain_id)
         ChainWhitelisted(ChainId),
-        /// Valdiator added to set
+        /// Relayer added to set
         RelayerAdded(AccountId),
         /// Relayer removed from set
         RelayerRemoved(AccountId),
@@ -107,15 +107,20 @@ decl_error! {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
+
         /// The ChainId for this chain.
         ChainIdentifier get(fn chain_id) config(): u32;
 
+        /// All whitelisted chains and their respective transaction counts
         Chains: map hasher(blake2_256) ChainId => Option<TxCount>;
 
+        /// Number of votes required for a proposal to execute
         RelayerThreshold get(fn relayer_threshold) config(): u32;
 
+        /// Tracks current relayer set
         pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
 
+        /// Number of relayers in set
         pub RelayerCount get(fn relayer_count): u32;
 
         /// All known proposals.
@@ -182,29 +187,18 @@ decl_module! {
             Ok(())
         }
 
-        pub fn create_proposal(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        /// Commits a vote in favour of the proposal. This may be called to initially create and
+        /// vote for the proposal, or to simply vote.
+        pub fn acknowledge_proposal(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
-
-            // Make sure proposal doesn't already exist
-            ensure!(!<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalAlreadyExists);
 
             // Creating a proposal also votes for it
             Self::vote_for(who, prop_id, call)
         }
 
-        pub fn approve(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
-
-            // Make sure proposal exists
-            ensure!(<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalDoesNotExist);
-
-            Self::vote_for(who, prop_id, call)?;
-
-            Ok(())
-        }
-
+        /// Votes against the proposal IFF it exists.
+        /// (Note: Proposal cancellation not yet fully implemented)
         pub fn reject(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -258,6 +252,7 @@ impl<T: Trait> Module<T> {
         MODULE_ID.into_account()
     }
 
+    /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
     fn vote_for(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
@@ -281,6 +276,8 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// Commits a vote against the proposal and cancels it if more than (relayers.len() - threshold)
+    /// votes against exist.
     fn vote_against(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
@@ -305,6 +302,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// Execute the proposal and signals the result as an event
     fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalApproved(prop_id));
         match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
@@ -314,6 +312,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    /// Cancels a proposal (not yet implemented)
     fn cancel_execution(prop_id: u32) -> DispatchResult {
         // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalRejected(prop_id));

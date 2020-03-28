@@ -153,7 +153,7 @@ fn create_sucessful_proposal() {
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
-        assert_ok!(Bridge::create_proposal(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
             Box::new(proposal.clone())
@@ -179,7 +179,7 @@ fn create_sucessful_proposal() {
         assert_eq!(prop, expected);
 
         // Third relayer votes in favour
-        assert_ok!(Bridge::approve(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
             Box::new(proposal.clone())
@@ -211,7 +211,7 @@ fn create_unsucessful_proposal() {
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
-        assert_ok!(Bridge::create_proposal(
+        assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id.clone(),
             Box::new(proposal.clone())

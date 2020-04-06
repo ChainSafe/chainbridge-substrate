@@ -30,9 +30,6 @@ struct TxCount {
 pub struct ProposalVotes<AccountId> {
     pub votes_for: Vec<AccountId>,
     pub votes_against: Vec<AccountId>,
-    // TODO: We may wish to store the Call here. While it is required to access the map internally,
-    // externally we can enumarate the keys which would give us all existing propsoals
-    // but would not reveal the calls.
 }
 
 impl<AccountId> Default for ProposalVotes<AccountId> {
@@ -55,7 +52,7 @@ pub trait Trait: system::Trait {
 decl_event! {
     pub enum Event<T> where <T as frame_system::Trait>::AccountId {
         /// Vote threshold has changed (new_threshold)
-        RelayerThresholdSet(u32),
+        RelayerThresholdChanged(u32),
         /// Chain now available for transfers (chain_id)
         ChainWhitelisted(ChainId),
         /// Relayer added to set
@@ -84,8 +81,16 @@ decl_event! {
 // TODO: Pass params to errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Root must call `initialize` to set params
+        NotInitialized,
+        /// Initialization has already been done
+        AlreadyInitialized,
+        /// Relayer threshold not set
+        ThresholdNotSet,
         /// Provided chain Id is not valid
         InvalidChainId,
+        /// Relayer threshold cannot be 0
+        InvalidThreshold,
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
         /// Relayer already in set
@@ -107,15 +112,17 @@ decl_error! {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
+        /// Whether the initialize function has been called (ie. chain ID and threshold set)
+        Initialized get(fn is_initialized): bool;
 
         /// The ChainId for this chain.
-        ChainIdentifier get(fn chain_id) config(): u32;
+        pub ChainIdentifier get(fn chain_id): u32;
 
         /// All whitelisted chains and their respective transaction counts
         Chains: map hasher(blake2_256) ChainId => Option<TxCount>;
 
         /// Number of votes required for a proposal to execute
-        RelayerThreshold get(fn relayer_threshold) config(): u32;
+        RelayerThreshold get(fn relayer_threshold): u32;
 
         /// Tracks current relayer set
         pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
@@ -130,31 +137,37 @@ decl_storage! {
             => Option<ProposalVotes<T::AccountId>>;
 
     }
-    add_extra_genesis {
-        config(relayers): Vec<T::AccountId>;
-        build(|config| {
-            Module::<T>::initialize_relayers(&config.relayers);
-        });
-    }
 }
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        // Default method for emitting events
         fn deposit_event() = default;
 
-        /// Sets the address used to identify this chain
+        /// Sets chain ID and threshold, and enables transfers
+        pub fn initialize(origin, threshold: u32, chain_id: ChainId) {
+            ensure_root(origin)?;
+            ensure!(!Self::is_initialized(), Error::<T>::AlreadyInitialized);
+            ensure!(threshold > 0, Error::<T>::InvalidThreshold);
+
+            <ChainIdentifier>::put(chain_id);
+            RelayerThreshold::put(threshold);
+            <Initialized>::put(true);
+        }
+
+        /// Sets the vote threshold for proposals
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             ensure_root(origin)?;
 
+            ensure!(threshold > 0, Error::<T>::InvalidThreshold);
             RelayerThreshold::put(threshold);
-            Self::deposit_event(RawEvent::RelayerThresholdSet(threshold));
+            Self::deposit_event(RawEvent::RelayerThresholdChanged(threshold));
             Ok(())
         }
 
         /// Enables a chain ID as a destination for a bridge transfer
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
             ensure_root(origin)?;
+            ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
             // Cannot whitelist this chain
             ensure!(id != Self::chain_id(), Error::<T>::InvalidChainId);
@@ -192,8 +205,8 @@ decl_module! {
         pub fn acknowledge_proposal(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
+            ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
-            // Creating a proposal also votes for it
             Self::vote_for(who, prop_id, call)
         }
 
@@ -202,19 +215,16 @@ decl_module! {
         pub fn reject(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
+            ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
-            // Make sure proposal exists
-            ensure!(<Votes<T>>::contains_key((prop_id, call.clone())), Error::<T>::ProposalDoesNotExist);
-
-            Self::vote_against(who, prop_id, call)?;
-
-            Ok(())
+            Self::vote_against(who, prop_id, call)
         }
 
         /// Completes an asset transfer to the chain by emitting an event to be acted on by the
         /// bridge and updating the tx count for the respective chan.
         pub fn receive_asset(origin, dest_id: ChainId, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
+            ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
             // Ensure chain is whitelisted
             if let Some(mut counter) = Chains::get(&dest_id) {
@@ -234,16 +244,6 @@ impl<T: Trait> Module<T> {
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {
         Self::relayers(who)
-    }
-
-    /// Used for genesis config of relayer set
-    fn initialize_relayers(relayers: &[T::AccountId]) {
-        if !relayers.is_empty() {
-            for v in relayers {
-                <Relayers<T>>::insert(v, true);
-            }
-            <RelayerCount>::put(relayers.len() as u32);
-        }
     }
 
     /// Provides an AccountId for the pallet.

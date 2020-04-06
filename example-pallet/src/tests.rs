@@ -11,6 +11,9 @@ use frame_support::{assert_noop, assert_ok};
 use codec::Encode;
 use sp_core::{blake2_256, H256};
 
+const TEST_THRESHOLD: u32 = 2;
+const TEST_CHAIN_ID: u32 = 5;
+
 fn make_remark_proposal(hash: H256) -> Call {
     Call::Example(crate::Call::remark(hash))
 }
@@ -21,11 +24,17 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 
 #[test]
 fn transfer_hash() {
-    new_test_ext(2).execute_with(|| {
+    new_test_ext().execute_with(|| {
         let dest_chain = 0;
         let token_id = vec![1];
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![99];
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_hash(
@@ -47,10 +56,18 @@ fn transfer_hash() {
 
 #[test]
 fn execute_remark() {
-    new_test_ext(2).execute_with(|| {
+    new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
 
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
@@ -69,8 +86,14 @@ fn execute_remark() {
 
 #[test]
 fn execute_remark_bad_origin() {
-    new_test_ext(2).execute_with(|| {
+    new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
         // Don't allow any signed origin except from bridge addr
@@ -88,7 +111,12 @@ fn execute_remark_bad_origin() {
 
 #[test]
 fn transfer() {
-    new_test_ext(1).execute_with(|| {
+    new_test_ext().execute_with(|| {
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         // Check inital state
         let bridge_id: u64 = Bridge::account_id();
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
@@ -111,10 +139,18 @@ fn transfer() {
 
 #[test]
 fn create_sucessful_transfer_proposal() {
-    new_test_ext(2).execute_with(|| {
+    new_test_ext().execute_with(|| {
         let prop_id = 1;
-
         let proposal = make_transfer_proposal(RELAYER_A, 10);
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 

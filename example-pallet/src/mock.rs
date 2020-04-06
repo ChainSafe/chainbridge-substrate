@@ -83,7 +83,7 @@ frame_support::construct_runtime!(
     {
         System: system::{Module, Call, Event<T>},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
+        Bridge: bridge::{Module, Call, Storage, Event<T>},
         Example: example::{Module, Call, Event<T>}
     }
 );
@@ -93,14 +93,9 @@ pub const RELAYER_B: u64 = 0x3;
 pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100;
 
-pub fn new_test_ext(threshold: u32) -> sp_io::TestExternalities {
+pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
-        bridge: Some(bridge::GenesisConfig {
-            chain_id: 1,
-            relayers: vec![RELAYER_A, RELAYER_B, RELAYER_C],
-            relayer_threshold: threshold,
-        }),
         balances: Some(balances::GenesisConfig {
             balances: vec![(bridge_id, ENDOWED_BALANCE)],
         }),

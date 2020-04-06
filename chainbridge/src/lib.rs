@@ -83,7 +83,7 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Root must call `initialize` to set params
         NotInitialized,
-
+        /// Initialization has already been done
         AlreadyInitialized,
         /// Relayer threshold not set
         ThresholdNotSet,
@@ -112,7 +112,7 @@ decl_error! {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
-        /// If config provided, we can consider this initialized.
+        /// Whether the initialize function has been called (ie. chain ID and threshold set)
         Initialized get(fn is_initialized): bool;
 
         /// The ChainId for this chain.
@@ -141,10 +141,9 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        // Default method for emitting events
         fn deposit_event() = default;
 
-        /// Required to be called upon instantiation if no config is provided.
+        /// Sets chain ID and threshold, and enables transfers
         pub fn initialize(origin, threshold: u32, chain_id: ChainId) {
             ensure_root(origin)?;
             ensure!(!Self::is_initialized(), Error::<T>::AlreadyInitialized);

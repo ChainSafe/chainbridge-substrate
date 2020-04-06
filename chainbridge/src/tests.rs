@@ -24,30 +24,47 @@ fn initialize_chain() {
         let token_id = vec![3];
         let metadata = vec![];
 
-        assert_noop!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_A),
-            prop_id,
-            Box::new(proposal.clone())
-        ), Error::<Test>::NotInitialized);
+        assert_noop!(
+            Bridge::acknowledge_proposal(
+                Origin::signed(RELAYER_A),
+                prop_id,
+                Box::new(proposal.clone())
+            ),
+            Error::<Test>::NotInitialized
+        );
 
-        assert_noop!(Bridge::receive_asset(
+        assert_noop!(
+            Bridge::receive_asset(
+                Origin::ROOT,
+                dest_id.clone(),
+                to.clone(),
+                token_id.clone(),
+                metadata.clone()
+            ),
+            Error::<Test>::NotInitialized
+        );
+
+        assert_ok!(Bridge::initialize(
             Origin::ROOT,
-            dest_id.clone(),
-            to.clone(),
-            token_id.clone(),
-            metadata.clone()
-        ), Error::<Test>::NotInitialized);
-
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
     })
 }
 
 #[test]
 fn whitelist_chain() {
     new_test_ext().execute_with(|| {
-        assert_noop!(Bridge::whitelist_chain(Origin::ROOT, 0), Error::<Test>::NotInitialized);
+        assert_noop!(
+            Bridge::whitelist_chain(Origin::ROOT, 0),
+            Error::<Test>::NotInitialized
+        );
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, 0));
         assert_noop!(
@@ -64,9 +81,12 @@ fn set_get_threshold() {
     new_test_ext().execute_with(|| {
         assert_eq!(<RelayerThreshold>::get(), 0);
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_eq!(<RelayerThreshold>::get(), TEST_THRESHOLD);
-
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, 5));
         assert_eq!(<RelayerThreshold>::get(), 5);
@@ -83,7 +103,11 @@ fn asset_transfer_success() {
         let token_id = vec![3];
         let metadata = vec![];
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
         assert_ok!(Bridge::receive_asset(
@@ -115,7 +139,11 @@ fn asset_transfer_invalid_chain() {
         let token_id = vec![4];
         let metadata = vec![];
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
         assert_noop!(
@@ -137,7 +165,11 @@ fn asset_transfer_invalid_chain() {
 #[test]
 fn add_remove_relayer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_eq!(Bridge::relayer_count(), 0);
 
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
@@ -179,7 +211,11 @@ fn create_sucessful_proposal() {
         let prop_id = 1;
         let proposal = make_proposal(vec![10]);
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
@@ -240,7 +276,11 @@ fn create_unsucessful_proposal() {
         let prop_id = 1;
         let proposal = make_proposal(vec![11]);
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));

@@ -30,7 +30,11 @@ fn transfer_hash() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![99];
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_hash(
@@ -57,7 +61,11 @@ fn execute_remark() {
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
 
@@ -81,7 +89,11 @@ fn execute_remark_bad_origin() {
     new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
 
         assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
         // Don't allow any signed origin except from bridge addr
@@ -100,7 +112,11 @@ fn execute_remark_bad_origin() {
 #[test]
 fn transfer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         // Check inital state
         let bridge_id: u64 = Bridge::account_id();
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
@@ -127,7 +143,11 @@ fn create_sucessful_transfer_proposal() {
         let prop_id = 1;
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
-        assert_ok!(Bridge::initialize(Origin::ROOT, TEST_THRESHOLD, TEST_CHAIN_ID));
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));

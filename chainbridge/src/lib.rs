@@ -242,7 +242,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {
         Self::relayers(who)

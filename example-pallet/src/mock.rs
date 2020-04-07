@@ -91,13 +91,13 @@ frame_support::construct_runtime!(
 pub const RELAYER_A: u64 = 0x2;
 pub const RELAYER_B: u64 = 0x3;
 pub const RELAYER_C: u64 = 0x4;
-pub const ENDOWED_BALANCE: u64 = 100;
+pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
         balances: Some(balances::GenesisConfig {
-            balances: vec![(bridge_id, ENDOWED_BALANCE)],
+            balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
         }),
     }
     .build_storage()

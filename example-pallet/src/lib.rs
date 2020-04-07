@@ -40,7 +40,9 @@ decl_module! {
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
         pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
-            ensure_signed(origin)?;
+            let source = ensure_signed(origin)?;
+            let bridge_id = <bridge::Module<T>>::account_id();
+            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let token_id = vec![2];
             let metadata: Vec<u8> = amount.to_le_bytes().to_vec();

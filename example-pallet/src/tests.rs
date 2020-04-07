@@ -70,7 +70,7 @@ fn transfer_native() {
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_native(
-            Origin::signed(1),
+            Origin::signed(RELAYER_A),
             amount.clone(),
             recipient.clone(),
             dest_chain,
@@ -159,7 +159,7 @@ fn transfer() {
             10
         ));
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
         assert_events(vec![Event::balances(balances::RawEvent::Transfer(
             Bridge::account_id(),
@@ -225,7 +225,7 @@ fn create_sucessful_transfer_proposal() {
         };
         assert_eq!(prop, expected);
 
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
         assert_eq!(
             Balances::free_balance(Bridge::account_id()),
             ENDOWED_BALANCE - 10
@@ -236,8 +236,6 @@ fn create_sucessful_transfer_proposal() {
             Event::bridge(bridge::RawEvent::VoteAgainst(prop_id, RELAYER_B)),
             Event::bridge(bridge::RawEvent::VoteFor(prop_id, RELAYER_C)),
             Event::bridge(bridge::RawEvent::ProposalApproved(prop_id)),
-            Event::system(system::RawEvent::NewAccount(RELAYER_A)),
-            Event::balances(balances::RawEvent::Endowed(RELAYER_A, 10)),
             Event::balances(balances::RawEvent::Transfer(
                 Bridge::account_id(),
                 RELAYER_A,

@@ -38,6 +38,15 @@ decl_module! {
             <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 
+        /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
+            ensure_signed(origin)?;
+
+            let token_id = vec![2];
+            let metadata: Vec<u8> = amount.to_le_bytes().to_vec();
+            <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
+        }
+
         /// Executes a simple currency transfer using the bridge account as the source
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;

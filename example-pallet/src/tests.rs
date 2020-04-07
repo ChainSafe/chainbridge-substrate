@@ -55,6 +55,38 @@ fn transfer_hash() {
 }
 
 #[test]
+fn transfer_native() {
+    new_test_ext().execute_with(|| {
+        let dest_chain = 0;
+        let token_id = vec![2];
+        let amount: u32 = 100;
+        let recipient = vec![99];
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
+
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Example::transfer_native(
+            Origin::signed(1),
+            amount.clone(),
+            recipient.clone(),
+            dest_chain,
+        ));
+
+        expect_event(bridge::RawEvent::AssetTransfer(
+            dest_chain,
+            0,
+            recipient,
+            token_id,
+            amount.to_le_bytes().to_vec(),
+        ));
+    })
+}
+
+#[test]
 fn execute_remark() {
     new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();

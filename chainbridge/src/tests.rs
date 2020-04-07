@@ -119,12 +119,42 @@ fn asset_transfer_success() {
             Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
             Event::bridge(RawEvent::AssetTransfer(
                 dest_id.clone(),
-                0,
-                to,
-                token_id,
-                metadata,
+                1,
+                to.clone(),
+                token_id.clone(),
+                metadata.clone(),
             )),
         ]);
+
+        assert_ok!(Bridge::receive_asset(
+            Origin::ROOT,
+            dest_id.clone(),
+            to.clone(),
+            token_id.clone(),
+            metadata.clone()
+        ));
+        assert_events(vec![Event::bridge(RawEvent::AssetTransfer(
+            dest_id.clone(),
+            2,
+            to.clone(),
+            token_id.clone(),
+            metadata.clone(),
+        ))]);
+
+        assert_ok!(Bridge::receive_asset(
+            Origin::ROOT,
+            dest_id.clone(),
+            to.clone(),
+            token_id.clone(),
+            metadata.clone()
+        ));
+        assert_events(vec![Event::bridge(RawEvent::AssetTransfer(
+            dest_id.clone(),
+            3,
+            to,
+            token_id,
+            metadata,
+        ))]);
     })
 }
 

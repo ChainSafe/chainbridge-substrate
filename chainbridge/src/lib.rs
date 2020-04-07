@@ -18,13 +18,7 @@ mod tests;
 const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
 type ChainId = u32;
-
-/// Tracks the transfer in/out of each respective chain
-#[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
-struct TxCount {
-    recv: u32,
-    sent: u32,
-}
+type DepositNonce = u32;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
@@ -119,7 +113,7 @@ decl_storage! {
         pub ChainIdentifier get(fn chain_id): u32;
 
         /// All whitelisted chains and their respective transaction counts
-        Chains: map hasher(blake2_256) ChainId => Option<TxCount>;
+        Chains: map hasher(blake2_256) ChainId => Option<DepositNonce>;
 
         /// Number of votes required for a proposal to execute
         RelayerThreshold get(fn relayer_threshold): u32;
@@ -172,7 +166,7 @@ decl_module! {
             // Cannot whitelist this chain
             ensure!(id != Self::chain_id(), Error::<T>::InvalidChainId);
 
-            Chains::insert(&id, TxCount { recv: 0, sent: 0 });
+            Chains::insert(&id, 0);
             Self::deposit_event(RawEvent::ChainWhitelisted(id));
             Ok(())
         }
@@ -227,11 +221,11 @@ decl_module! {
             ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
             // Ensure chain is whitelisted
-            if let Some(mut counter) = Chains::get(&dest_id) {
-                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.recv, to, token_id, metadata));
-                // Increment counter and store
-                counter.recv += 1;
-                Chains::insert(&dest_id, counter.clone());
+            if let Some(mut nonce) = Chains::get(&dest_id) {
+                // Increment counter, emit event and store
+                nonce += 1;
+                Self::deposit_event(RawEvent::AssetTransfer(dest_id, nonce, to, token_id, metadata));
+                Chains::insert(&dest_id, nonce);
                 Ok(())
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?

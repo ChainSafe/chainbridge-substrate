@@ -46,7 +46,7 @@ fn transfer_hash() {
 
         expect_event(bridge::RawEvent::AssetTransfer(
             dest_chain,
-            0,
+            1,
             recipient,
             token_id,
             hash.as_ref().to_vec(),
@@ -78,7 +78,7 @@ fn transfer_native() {
 
         expect_event(bridge::RawEvent::AssetTransfer(
             dest_chain,
-            0,
+            1,
             recipient,
             token_id,
             amount.to_le_bytes().to_vec(),

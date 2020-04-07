@@ -4,6 +4,7 @@ use super::*;
 
 use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
 use frame_system::{self as system};
+use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -67,9 +68,16 @@ impl bridge::Trait for Test {
     type Proposal = Call;
 }
 
+parameter_types! {
+    pub const HashTokenId: [u8; 16] = blake2_128(b"hash");
+    pub const NativeTokenId: [u8; 16] = blake2_128(b"DAV");
+}
+
 impl Trait for Test {
     type Event = Event;
     type BridgeOrigin = bridge::EnsureBridge<Test>;
+    type HashTokenId = HashTokenId;
+    type NativeTokenId = NativeTokenId;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;

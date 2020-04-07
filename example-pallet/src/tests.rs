@@ -2,7 +2,8 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Event, Example, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
+    Event, Example, HashTokenId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
+    RELAYER_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -26,9 +27,9 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 fn transfer_hash() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
-        let token_id = vec![1];
+        let token_id = HashTokenId::get().to_vec();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
-        let recipient = vec![99];
+        let recipient = vec![]; // No recipient
 
         assert_ok!(Bridge::initialize(
             Origin::ROOT,
@@ -40,7 +41,6 @@ fn transfer_hash() {
         assert_ok!(Example::transfer_hash(
             Origin::signed(1),
             hash.clone(),
-            recipient.clone(),
             dest_chain,
         ));
 
@@ -58,7 +58,7 @@ fn transfer_hash() {
 fn transfer_native() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
-        let token_id = vec![2];
+        let token_id = NativeTokenId::get().to_vec();
         let amount: u32 = 100;
         let recipient = vec![99];
 

@@ -7,8 +7,6 @@ use super::mock::{
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 
-type System = frame_system::Module<Test>;
-
 const TEST_THRESHOLD: u32 = 2;
 const TEST_CHAIN_ID: u32 = 5;
 

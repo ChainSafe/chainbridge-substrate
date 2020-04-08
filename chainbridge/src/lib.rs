@@ -248,11 +248,16 @@ impl<T: Trait> Module<T> {
     }
 
     fn chain_whitelisted(id: ChainId) -> bool {
-        return Self::chains(id) != None
+        return Self::chains(id) != None;
     }
 
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
-    fn vote_for(who: T::AccountId, nonce: DepositNonce, src_id: ChainId, prop: Box<T::Proposal>) -> DispatchResult {
+    fn vote_for(
+        who: T::AccountId,
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
@@ -277,7 +282,12 @@ impl<T: Trait> Module<T> {
 
     /// Commits a vote against the proposal and cancels it if more than (relayers.len() - threshold)
     /// votes against exist.
-    fn vote_against(who: T::AccountId, nonce: DepositNonce, src_id: ChainId, prop: Box<T::Proposal>) -> DispatchResult {
+    fn vote_against(
+        who: T::AccountId,
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 

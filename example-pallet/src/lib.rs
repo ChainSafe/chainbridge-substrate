@@ -2,7 +2,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use chainbridge as bridge;
-use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath};
+use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{decl_event, decl_module, dispatch::DispatchResult};
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use sp_runtime::traits::EnsureOrigin;
@@ -13,8 +13,13 @@ mod tests;
 
 pub trait Trait: system::Trait + bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-
+    /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+    /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
+    /// You'll want to use a type that can easily become Vec<u8>
+    type HashTokenId: Get<[u8; 16]>;
+    type NativeTokenId: Get<[u8; 16]>;
 }
 
 decl_event! {
@@ -29,14 +34,34 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         fn deposit_event() = default;
 
-        /// Transfers an arbitrary hash to some recipient on a (whitelisted) destination chain.
-        pub fn transfer_hash(origin, hash: T::Hash, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
+        //
+        // Initiation calls. These start a bridge transfer.
+        //
+
+        /// Transfers an arbitrary hash to a (whitelisted) destination chain.
+        pub fn transfer_hash(origin, hash: T::Hash, dest_id: u32) -> DispatchResult {
             ensure_signed(origin)?;
 
-            let token_id = vec![1];
+            let token_id = T::HashTokenId::get().to_vec();
+            let recipient = vec![]; // No recipient
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
+            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
+
+        /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: u32) -> DispatchResult {
+            let source = ensure_signed(origin)?;
+            let bridge_id = <bridge::Module<T>>::account_id();
+            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+
+            let token_id: Vec<u8> = T::NativeTokenId::get().to_vec();
+            let metadata: Vec<u8> = amount.to_le_bytes().to_vec();
+            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
+        }
+
+        //
+        // Executable calls. These can be triggered by a bridge transfer initiated on another chain
+        //
 
         /// Executes a simple currency transfer using the bridge account as the source
         pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {

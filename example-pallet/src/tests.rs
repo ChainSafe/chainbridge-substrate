@@ -2,7 +2,8 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Event, Example, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
+    Event, Example, HashTokenId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
+    RELAYER_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -26,9 +27,9 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 fn transfer_hash() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
-        let token_id = vec![1];
+        let token_id = HashTokenId::get().to_vec();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
-        let recipient = vec![99];
+        let recipient = vec![]; // No recipient
 
         assert_ok!(Bridge::initialize(
             Origin::ROOT,
@@ -40,16 +41,47 @@ fn transfer_hash() {
         assert_ok!(Example::transfer_hash(
             Origin::signed(1),
             hash.clone(),
+            dest_chain,
+        ));
+
+        expect_event(bridge::RawEvent::Transfer(
+            dest_chain,
+            1,
+            recipient,
+            token_id,
+            hash.as_ref().to_vec(),
+        ));
+    })
+}
+
+#[test]
+fn transfer_native() {
+    new_test_ext().execute_with(|| {
+        let dest_chain = 0;
+        let token_id = NativeTokenId::get().to_vec();
+        let amount: u32 = 100;
+        let recipient = vec![99];
+
+        assert_ok!(Bridge::initialize(
+            Origin::ROOT,
+            TEST_THRESHOLD,
+            TEST_CHAIN_ID
+        ));
+
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Example::transfer_native(
+            Origin::signed(RELAYER_A),
+            amount.clone(),
             recipient.clone(),
             dest_chain,
         ));
 
-        expect_event(bridge::RawEvent::AssetTransfer(
+        expect_event(bridge::RawEvent::Transfer(
             dest_chain,
-            0,
+            1,
             recipient,
             token_id,
-            hash.as_ref().to_vec(),
+            amount.to_le_bytes().to_vec(),
         ));
     })
 }
@@ -60,6 +92,7 @@ fn execute_remark() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
+        let src_id = 1;
 
         assert_ok!(Bridge::initialize(
             Origin::ROOT,
@@ -68,15 +101,18 @@ fn execute_remark() {
         ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
 
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
 
@@ -127,7 +163,7 @@ fn transfer() {
             10
         ));
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
         assert_events(vec![Event::balances(balances::RawEvent::Transfer(
             Bridge::account_id(),
@@ -141,6 +177,7 @@ fn transfer() {
 fn create_sucessful_transfer_proposal() {
     new_test_ext().execute_with(|| {
         let prop_id = 1;
+        let src_id = 1;
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
         assert_ok!(Bridge::initialize(
@@ -151,6 +188,7 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 
@@ -158,9 +196,10 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
@@ -171,9 +210,10 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::reject(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
@@ -184,16 +224,17 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
         };
         assert_eq!(prop, expected);
 
-        assert_eq!(Balances::free_balance(RELAYER_A), 10);
+        assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
         assert_eq!(
             Balances::free_balance(Bridge::account_id()),
             ENDOWED_BALANCE - 10
@@ -204,8 +245,6 @@ fn create_sucessful_transfer_proposal() {
             Event::bridge(bridge::RawEvent::VoteAgainst(prop_id, RELAYER_B)),
             Event::bridge(bridge::RawEvent::VoteFor(prop_id, RELAYER_C)),
             Event::bridge(bridge::RawEvent::ProposalApproved(prop_id)),
-            Event::system(system::RawEvent::NewAccount(RELAYER_A)),
-            Event::balances(balances::RawEvent::Endowed(RELAYER_A, 10)),
             Event::balances(balances::RawEvent::Transfer(
                 Bridge::account_id(),
                 RELAYER_A,

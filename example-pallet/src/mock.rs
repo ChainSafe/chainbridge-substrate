@@ -4,6 +4,7 @@ use super::*;
 
 use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
 use frame_system::{self as system};
+use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -67,9 +68,16 @@ impl bridge::Trait for Test {
     type Proposal = Call;
 }
 
+parameter_types! {
+    pub const HashTokenId: [u8; 16] = blake2_128(b"hash");
+    pub const NativeTokenId: [u8; 16] = blake2_128(b"DAV");
+}
+
 impl Trait for Test {
     type Event = Event;
     type BridgeOrigin = bridge::EnsureBridge<Test>;
+    type HashTokenId = HashTokenId;
+    type NativeTokenId = NativeTokenId;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
@@ -91,13 +99,13 @@ frame_support::construct_runtime!(
 pub const RELAYER_A: u64 = 0x2;
 pub const RELAYER_B: u64 = 0x3;
 pub const RELAYER_C: u64 = 0x4;
-pub const ENDOWED_BALANCE: u64 = 100;
+pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
     GenesisConfig {
         balances: Some(balances::GenesisConfig {
-            balances: vec![(bridge_id, ENDOWED_BALANCE)],
+            balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
         }),
     }
     .build_storage()

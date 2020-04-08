@@ -7,8 +7,6 @@ use super::mock::{
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 
-type System = frame_system::Module<Test>;
-
 const TEST_THRESHOLD: u32 = 2;
 const TEST_CHAIN_ID: u32 = 5;
 
@@ -28,13 +26,14 @@ fn initialize_chain() {
             Bridge::acknowledge_proposal(
                 Origin::signed(RELAYER_A),
                 prop_id,
+                dest_id,
                 Box::new(proposal.clone())
             ),
             Error::<Test>::NotInitialized
         );
 
         assert_noop!(
-            Bridge::receive_asset(
+            Bridge::transfer(
                 Origin::ROOT,
                 dest_id.clone(),
                 to.clone(),
@@ -65,6 +64,8 @@ fn whitelist_chain() {
             TEST_THRESHOLD,
             TEST_CHAIN_ID
         ));
+
+        assert!(!Bridge::chain_whitelisted(0));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, 0));
         assert_noop!(
@@ -110,7 +111,7 @@ fn asset_transfer_success() {
         ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
-        assert_ok!(Bridge::receive_asset(
+        assert_ok!(Bridge::transfer(
             Origin::ROOT,
             dest_id.clone(),
             to.clone(),
@@ -119,14 +120,44 @@ fn asset_transfer_success() {
         ));
         assert_events(vec![
             Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
-            Event::bridge(RawEvent::AssetTransfer(
+            Event::bridge(RawEvent::Transfer(
                 dest_id.clone(),
-                0,
-                to,
-                token_id,
-                metadata,
+                1,
+                to.clone(),
+                token_id.clone(),
+                metadata.clone(),
             )),
         ]);
+
+        assert_ok!(Bridge::transfer(
+            Origin::ROOT,
+            dest_id.clone(),
+            to.clone(),
+            token_id.clone(),
+            metadata.clone()
+        ));
+        assert_events(vec![Event::bridge(RawEvent::Transfer(
+            dest_id.clone(),
+            2,
+            to.clone(),
+            token_id.clone(),
+            metadata.clone(),
+        ))]);
+
+        assert_ok!(Bridge::transfer(
+            Origin::ROOT,
+            dest_id.clone(),
+            to.clone(),
+            token_id.clone(),
+            metadata.clone()
+        ));
+        assert_events(vec![Event::bridge(RawEvent::Transfer(
+            dest_id.clone(),
+            3,
+            to,
+            token_id,
+            metadata,
+        ))]);
     })
 }
 
@@ -147,7 +178,7 @@ fn asset_transfer_invalid_chain() {
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
         assert_noop!(
-            Bridge::receive_asset(
+            Bridge::transfer(
                 Origin::ROOT,
                 bad_dest_id,
                 to.clone(),
@@ -210,6 +241,7 @@ fn create_sucessful_proposal() {
     new_test_ext().execute_with(|| {
         let prop_id = 1;
         let proposal = make_proposal(vec![10]);
+        let src_id = 1;
 
         assert_ok!(Bridge::initialize(
             Origin::ROOT,
@@ -219,15 +251,17 @@ fn create_sucessful_proposal() {
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
         assert_eq!(Bridge::relayer_threshold(), 2);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
@@ -238,9 +272,10 @@ fn create_sucessful_proposal() {
         assert_ok!(Bridge::reject(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
@@ -251,9 +286,10 @@ fn create_sucessful_proposal() {
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
@@ -274,6 +310,7 @@ fn create_sucessful_proposal() {
 fn create_unsucessful_proposal() {
     new_test_ext().execute_with(|| {
         let prop_id = 1;
+        let src_id = 1;
         let proposal = make_proposal(vec![11]);
 
         assert_ok!(Bridge::initialize(
@@ -284,14 +321,16 @@ fn create_unsucessful_proposal() {
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
-            prop_id.clone(),
+            prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
@@ -302,9 +341,10 @@ fn create_unsucessful_proposal() {
         assert_ok!(Bridge::reject(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
@@ -315,9 +355,10 @@ fn create_unsucessful_proposal() {
         assert_ok!(Bridge::reject(
             Origin::signed(RELAYER_C),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B, RELAYER_C],

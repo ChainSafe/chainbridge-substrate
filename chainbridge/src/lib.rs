@@ -17,14 +17,8 @@ mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
-type ChainId = u32;
-
-/// Tracks the transfer in/out of each respective chain
-#[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
-struct TxCount {
-    recv: u32,
-    sent: u32,
-}
+pub type ChainId = u32;
+pub type DepositNonce = u32;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
@@ -60,8 +54,8 @@ decl_event! {
         /// Relayer removed from set
         RelayerRemoved(AccountId),
 
-        /// Asset transfer is available for relaying (dest_id, prop_id, to, token_id, metadata)
-        AssetTransfer(ChainId, u32, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// Transfer is available for relaying (dest_id, nonce, to, token_id, metadata)
+        Transfer(ChainId, DepositNonce, Vec<u8>, Vec<u8>, Vec<u8>),
 
         /// Vote submitted in favour of proposal
         VoteFor(u32, AccountId),
@@ -119,7 +113,7 @@ decl_storage! {
         pub ChainIdentifier get(fn chain_id): u32;
 
         /// All whitelisted chains and their respective transaction counts
-        Chains: map hasher(blake2_256) ChainId => Option<TxCount>;
+        Chains get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
 
         /// Number of votes required for a proposal to execute
         RelayerThreshold get(fn relayer_threshold): u32;
@@ -133,7 +127,7 @@ decl_storage! {
         /// All known proposals.
         /// The key is the hash of the call and the deposit ID, to ensure it's unique.
         pub Votes get(fn votes):
-            map hasher(blake2_256) (u32, T::Proposal)
+            double_map hasher(blake2_256) ChainId, hasher(blake2_256) (DepositNonce, T::Proposal)
             => Option<ProposalVotes<T::AccountId>>;
 
     }
@@ -172,7 +166,7 @@ decl_module! {
             // Cannot whitelist this chain
             ensure!(id != Self::chain_id(), Error::<T>::InvalidChainId);
 
-            Chains::insert(&id, TxCount { recv: 0, sent: 0 });
+            Chains::insert(&id, 0);
             Self::deposit_event(RawEvent::ChainWhitelisted(id));
             Ok(())
         }
@@ -202,36 +196,37 @@ decl_module! {
 
         /// Commits a vote in favour of the proposal. This may be called to initially create and
         /// vote for the proposal, or to simply vote.
-        pub fn acknowledge_proposal(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
-            Self::vote_for(who, prop_id, call)
+            ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
+            Self::vote_for(who, nonce, src_id, call)
         }
 
         /// Votes against the proposal IFF it exists.
         /// (Note: Proposal cancellation not yet fully implemented)
-        pub fn reject(origin, prop_id: u32, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn reject(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
-            Self::vote_against(who, prop_id, call)
+            Self::vote_against(who, nonce, src_id, call)
         }
 
-        /// Completes an asset transfer to the chain by emitting an event to be acted on by the
-        /// bridge and updating the tx count for the respective chan.
-        pub fn receive_asset(origin, dest_id: ChainId, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
+        /// Completes a transfer fromo the chain by emitting an event to be acted on by the
+        /// bridge and updating the tx count for the respective chain.
+        pub fn transfer(origin, dest_id: ChainId, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
             // Ensure chain is whitelisted
-            if let Some(mut counter) = Chains::get(&dest_id) {
-                Self::deposit_event(RawEvent::AssetTransfer(dest_id, counter.recv, to, token_id, metadata));
-                // Increment counter and store
-                counter.recv += 1;
-                Chains::insert(&dest_id, counter.clone());
+            if let Some(mut nonce) = Chains::get(&dest_id) {
+                // Increment counter, emit event and store
+                nonce += 1;
+                Self::deposit_event(RawEvent::Transfer(dest_id, nonce, to, token_id, metadata));
+                Chains::insert(&dest_id, nonce);
                 Ok(())
             } else {
                 Err(Error::<T>::ChainNotWhitelisted)?
@@ -252,21 +247,30 @@ impl<T: Trait> Module<T> {
         MODULE_ID.into_account()
     }
 
+    fn chain_whitelisted(id: ChainId) -> bool {
+        return Self::chains(id) != None;
+    }
+
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
-    fn vote_for(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
+    fn vote_for(
+        who: T::AccountId,
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
         // Use default in the case it doesn't already exist
-        let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
+        let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
         if !votes.votes_for.contains(&who) {
             // Vote and store
             votes.votes_for.push(who.clone());
-            <Votes<T>>::insert((prop_id, prop.clone()), votes.clone());
+            <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
 
-            Self::deposit_event(RawEvent::VoteFor(prop_id, who.clone()));
+            Self::deposit_event(RawEvent::VoteFor(nonce, who.clone()));
 
             // Check if finalization is possible
             if votes.votes_for.len() == <RelayerThreshold>::get() as usize {
-                Self::finalize_execution(prop_id, prop)?
+                Self::finalize_execution(nonce, prop)?
             } else if votes.votes_for.len() > <RelayerThreshold>::get() as usize {
                 Err(Error::<T>::ProposalAlreadyComplete)?
             }
@@ -278,22 +282,27 @@ impl<T: Trait> Module<T> {
 
     /// Commits a vote against the proposal and cancels it if more than (relayers.len() - threshold)
     /// votes against exist.
-    fn vote_against(who: T::AccountId, prop_id: u32, prop: Box<T::Proposal>) -> DispatchResult {
+    fn vote_against(
+        who: T::AccountId,
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
         // Use default in the case it doesn't already exist
-        let mut votes = <Votes<T>>::get((prop_id, prop.clone())).unwrap_or_default();
+        let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
         if !votes.votes_against.contains(&who) {
             // Vote and store
             votes.votes_against.push(who.clone());
-            <Votes<T>>::insert((prop_id, prop.clone()), votes.clone());
+            <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
 
-            Self::deposit_event(RawEvent::VoteAgainst(prop_id, who.clone()));
+            Self::deposit_event(RawEvent::VoteAgainst(nonce, who.clone()));
 
             // Check if cancellation is possible
             if votes.votes_against.len()
                 > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
             {
-                Self::cancel_execution(prop_id)?
+                Self::cancel_execution(nonce)?
             }
 
             Ok(())
@@ -303,19 +312,19 @@ impl<T: Trait> Module<T> {
     }
 
     /// Execute the proposal and signals the result as an event
-    fn finalize_execution(prop_id: u32, call: Box<T::Proposal>) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalApproved(prop_id));
+    fn finalize_execution(nonce: DepositNonce, call: Box<T::Proposal>) -> DispatchResult {
+        Self::deposit_event(RawEvent::ProposalApproved(nonce));
         match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
-            Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(prop_id)),
-            Err(_) => Self::deposit_event(RawEvent::ProposalFailed(prop_id)),
+            Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(nonce)),
+            Err(_) => Self::deposit_event(RawEvent::ProposalFailed(nonce)),
         }
         Ok(())
     }
 
     /// Cancels a proposal (not yet implemented)
-    fn cancel_execution(prop_id: u32) -> DispatchResult {
+    fn cancel_execution(nonce: DepositNonce) -> DispatchResult {
         // TODO: Incomplete
-        Self::deposit_event(RawEvent::ProposalRejected(prop_id));
+        Self::deposit_event(RawEvent::ProposalRejected(nonce));
         Ok(())
     }
 }

@@ -45,7 +45,7 @@ decl_module! {
             let token_id = T::HashTokenId::get().to_vec();
             let recipient = vec![]; // No recipient
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
+            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
@@ -56,7 +56,7 @@ decl_module! {
 
             let token_id: Vec<u8> = T::NativeTokenId::get().to_vec();
             let metadata: Vec<u8> = amount.to_le_bytes().to_vec();
-            <bridge::Module<T>>::receive_asset(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
+            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, recipient, token_id, metadata)
         }
 
         //

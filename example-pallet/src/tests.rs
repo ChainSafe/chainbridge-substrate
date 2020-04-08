@@ -44,7 +44,7 @@ fn transfer_hash() {
             dest_chain,
         ));
 
-        expect_event(bridge::RawEvent::AssetTransfer(
+        expect_event(bridge::RawEvent::Transfer(
             dest_chain,
             1,
             recipient,
@@ -76,7 +76,7 @@ fn transfer_native() {
             dest_chain,
         ));
 
-        expect_event(bridge::RawEvent::AssetTransfer(
+        expect_event(bridge::RawEvent::Transfer(
             dest_chain,
             1,
             recipient,
@@ -92,6 +92,7 @@ fn execute_remark() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
+        let src_id = 1;
 
         assert_ok!(Bridge::initialize(
             Origin::ROOT,
@@ -100,15 +101,18 @@ fn execute_remark() {
         ));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
 
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
 
@@ -173,6 +177,7 @@ fn transfer() {
 fn create_sucessful_transfer_proposal() {
     new_test_ext().execute_with(|| {
         let prop_id = 1;
+        let src_id = 1;
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
         assert_ok!(Bridge::initialize(
@@ -183,6 +188,7 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
 
         assert_eq!(Bridge::relayer_threshold(), 2);
 
@@ -190,9 +196,10 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
@@ -203,9 +210,10 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::reject(
             Origin::signed(RELAYER_B),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
@@ -216,9 +224,10 @@ fn create_sucessful_transfer_proposal() {
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
+            src_id,
             Box::new(proposal.clone())
         ));
-        let prop = Bridge::votes((prop_id.clone(), proposal.clone())).unwrap();
+        let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],

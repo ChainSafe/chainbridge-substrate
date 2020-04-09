@@ -323,7 +323,11 @@ impl<T: Trait> Module<T> {
     }
 
     /// Execute the proposal and signals the result as an event
-    fn finalize_execution(src_id: ChainId, nonce: DepositNonce, call: Box<T::Proposal>) -> DispatchResult {
+    fn finalize_execution(
+        src_id: ChainId,
+        nonce: DepositNonce,
+        call: Box<T::Proposal>,
+    ) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalApproved(src_id, nonce));
         match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
             Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce)),

@@ -30,10 +30,7 @@ fn transfer_hash() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![]; // No recipient
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_hash(
@@ -86,10 +83,7 @@ fn execute_remark() {
         let prop_id = 1;
         let src_id = 1;
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
@@ -160,10 +154,7 @@ fn create_sucessful_transfer_proposal() {
         let src_id = 1;
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));

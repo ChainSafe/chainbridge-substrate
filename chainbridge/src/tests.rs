@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::mock::{
-    assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, TestChainId, ENDOWED_BALANCE,
-    RELAYER_A, RELAYER_B, RELAYER_C,
+    assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, TestChainId,
+    ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
@@ -70,7 +70,7 @@ fn set_get_threshold() {
 
         assert_events(vec![
             Event::bridge(RawEvent::RelayerThresholdChanged(TEST_THRESHOLD)),
-            Event::bridge(RawEvent::RelayerThresholdChanged(5))
+            Event::bridge(RawEvent::RelayerThresholdChanged(5)),
         ]);
     })
 }
@@ -83,10 +83,7 @@ fn asset_transfer_success() {
         let resource_id = [1; 32];
         let metadata = vec![];
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
         assert_ok!(Bridge::transfer(
@@ -168,10 +165,7 @@ fn asset_transfer_invalid_chain() {
 #[test]
 fn add_remove_relayer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_eq!(Bridge::relayer_count(), 0);
 
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
@@ -214,10 +208,7 @@ fn create_sucessful_proposal() {
         let proposal = make_proposal(vec![10]);
         let src_id = 1;
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
@@ -283,10 +274,7 @@ fn create_unsucessful_proposal() {
         let src_id = 1;
         let proposal = make_proposal(vec![11]);
 
-        assert_ok!(Bridge::set_threshold(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));

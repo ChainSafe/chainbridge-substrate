@@ -1,14 +1,13 @@
 #![cfg(test)]
 
 use super::mock::{
-    assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, ENDOWED_BALANCE,
-    RELAYER_A, RELAYER_B, RELAYER_C,
+    assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, TestChainId,
+    ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 
 const TEST_THRESHOLD: u32 = 2;
-const TEST_CHAIN_ID: u8 = 5;
 
 #[test]
 fn derive_ids() {
@@ -23,47 +22,6 @@ fn derive_ids() {
         0x37, 0x2a, 0x9e, 0xd8, 0x42, 0x53, 0xd2, 0xd0, 0x24, 0xb7, 0xb1, 0x09, 0x99, 0xf4, chain,
     ];
     assert_eq!(r_id, expected);
-}
-
-#[test]
-fn initialize_chain() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-
-        let prop_id = 1;
-        let proposal = make_proposal(vec![10]);
-        let dest_id = 2;
-        let to = vec![2];
-        let resource_id = [1; 32];
-        let metadata = vec![];
-
-        assert_noop!(
-            Bridge::acknowledge_proposal(
-                Origin::signed(RELAYER_A),
-                prop_id,
-                dest_id,
-                Box::new(proposal.clone())
-            ),
-            Error::<Test>::NotInitialized
-        );
-
-        assert_noop!(
-            Bridge::transfer(
-                Origin::ROOT,
-                dest_id.clone(),
-                resource_id.clone(),
-                to.clone(),
-                metadata.clone()
-            ),
-            Error::<Test>::NotInitialized
-        );
-
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
-    })
 }
 
 #[test]
@@ -87,22 +45,11 @@ fn setup_resources() {
 #[test]
 fn whitelist_chain() {
     new_test_ext().execute_with(|| {
-        assert_noop!(
-            Bridge::whitelist_chain(Origin::ROOT, 0),
-            Error::<Test>::NotInitialized
-        );
-
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
-
         assert!(!Bridge::chain_whitelisted(0));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, 0));
         assert_noop!(
-            Bridge::whitelist_chain(Origin::ROOT, Bridge::chain_id()),
+            Bridge::whitelist_chain(Origin::ROOT, TestChainId::get()),
             Error::<Test>::InvalidChainId
         );
 
@@ -113,19 +60,18 @@ fn whitelist_chain() {
 #[test]
 fn set_get_threshold() {
     new_test_ext().execute_with(|| {
-        assert_eq!(<RelayerThreshold>::get(), 0);
+        assert_eq!(<RelayerThreshold>::get(), 1);
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD));
         assert_eq!(<RelayerThreshold>::get(), TEST_THRESHOLD);
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, 5));
         assert_eq!(<RelayerThreshold>::get(), 5);
 
-        assert_events(vec![Event::bridge(RawEvent::RelayerThresholdChanged(5))]);
+        assert_events(vec![
+            Event::bridge(RawEvent::RelayerThresholdChanged(TEST_THRESHOLD)),
+            Event::bridge(RawEvent::RelayerThresholdChanged(5)),
+        ]);
     })
 }
 
@@ -137,11 +83,7 @@ fn asset_transfer_success() {
         let resource_id = [1; 32];
         let metadata = vec![];
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
         assert_ok!(Bridge::transfer(
@@ -203,12 +145,6 @@ fn asset_transfer_invalid_chain() {
         let resource_id = [4; 32];
         let metadata = vec![];
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
-
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
         assert_noop!(
             Bridge::transfer(
@@ -229,11 +165,7 @@ fn asset_transfer_invalid_chain() {
 #[test]
 fn add_remove_relayer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_eq!(Bridge::relayer_count(), 0);
 
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
@@ -276,11 +208,7 @@ fn create_sucessful_proposal() {
         let proposal = make_proposal(vec![10]);
         let src_id = 1;
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
@@ -330,11 +258,11 @@ fn create_sucessful_proposal() {
         assert_eq!(prop, expected);
 
         assert_events(vec![
-            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_A)),
-            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_B)),
-            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_C)),
-            Event::bridge(RawEvent::ProposalApproved(prop_id)),
-            Event::bridge(RawEvent::ProposalSucceeded(prop_id)),
+            Event::bridge(RawEvent::VoteFor(src_id, prop_id, RELAYER_A)),
+            Event::bridge(RawEvent::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            Event::bridge(RawEvent::VoteFor(src_id, prop_id, RELAYER_C)),
+            Event::bridge(RawEvent::ProposalApproved(src_id, prop_id)),
+            Event::bridge(RawEvent::ProposalSucceeded(src_id, prop_id)),
         ]);
     })
 }
@@ -346,11 +274,7 @@ fn create_unsucessful_proposal() {
         let src_id = 1;
         let proposal = make_proposal(vec![11]);
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
@@ -405,10 +329,10 @@ fn create_unsucessful_proposal() {
         );
 
         assert_events(vec![
-            Event::bridge(RawEvent::VoteFor(prop_id, RELAYER_A)),
-            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_B)),
-            Event::bridge(RawEvent::VoteAgainst(prop_id, RELAYER_C)),
-            Event::bridge(RawEvent::ProposalRejected(prop_id)),
+            Event::bridge(RawEvent::VoteFor(src_id, prop_id, RELAYER_A)),
+            Event::bridge(RawEvent::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            Event::bridge(RawEvent::VoteAgainst(src_id, prop_id, RELAYER_C)),
+            Event::bridge(RawEvent::ProposalRejected(src_id, prop_id)),
         ]);
     })
 }

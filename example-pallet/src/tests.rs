@@ -13,7 +13,6 @@ use codec::Encode;
 use sp_core::{blake2_256, H256};
 
 const TEST_THRESHOLD: u32 = 2;
-const TEST_CHAIN_ID: u8 = 5;
 
 fn make_remark_proposal(hash: H256) -> Call {
     Call::Example(crate::Call::remark(hash))
@@ -31,11 +30,7 @@ fn transfer_hash() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![]; // No recipient
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_hash(
@@ -61,12 +56,6 @@ fn transfer_native() {
         let resource_id = NativeTokenId::get();
         let amount: u32 = 100;
         let recipient = vec![99];
-
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
         assert_ok!(Example::transfer_native(
@@ -94,11 +83,7 @@ fn execute_remark() {
         let prop_id = 1;
         let src_id = 1;
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
@@ -125,12 +110,6 @@ fn execute_remark_bad_origin() {
     new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
-
         assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
         // Don't allow any signed origin except from bridge addr
         assert_noop!(
@@ -148,11 +127,6 @@ fn execute_remark_bad_origin() {
 #[test]
 fn transfer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
         // Check inital state
         let bridge_id: u64 = Bridge::account_id();
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
@@ -180,11 +154,7 @@ fn create_sucessful_transfer_proposal() {
         let src_id = 1;
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
-        assert_ok!(Bridge::initialize(
-            Origin::ROOT,
-            TEST_THRESHOLD,
-            TEST_CHAIN_ID
-        ));
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
@@ -241,16 +211,16 @@ fn create_sucessful_transfer_proposal() {
         );
 
         assert_events(vec![
-            Event::bridge(bridge::RawEvent::VoteFor(prop_id, RELAYER_A)),
-            Event::bridge(bridge::RawEvent::VoteAgainst(prop_id, RELAYER_B)),
-            Event::bridge(bridge::RawEvent::VoteFor(prop_id, RELAYER_C)),
-            Event::bridge(bridge::RawEvent::ProposalApproved(prop_id)),
+            Event::bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_A)),
+            Event::bridge(bridge::RawEvent::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            Event::bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_C)),
+            Event::bridge(bridge::RawEvent::ProposalApproved(src_id, prop_id)),
             Event::balances(balances::RawEvent::Transfer(
                 Bridge::account_id(),
                 RELAYER_A,
                 10,
             )),
-            Event::bridge(bridge::RawEvent::ProposalSucceeded(prop_id)),
+            Event::bridge(bridge::RawEvent::ProposalSucceeded(src_id, prop_id)),
         ]);
     })
 }

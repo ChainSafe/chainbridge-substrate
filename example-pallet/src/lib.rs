@@ -19,7 +19,6 @@ pub trait Trait: system::Trait + bridge::Trait {
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
-    /// You'll want to use a type that can easily become Vec<u8>
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
 }
@@ -34,6 +33,8 @@ decl_event! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        const HashId: ResourceId = T::HashId::get();
+        const NativeTokenId: ResourceId = T::NativeTokenId::get();
 
         fn deposit_event() = default;
 

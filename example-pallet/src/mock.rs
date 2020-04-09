@@ -61,11 +61,16 @@ impl pallet_balances::Trait for Test {
     type AccountStore = System;
 }
 
+parameter_types! {
+    pub const TestChainId: u8 = 5;
+}
+
 impl bridge::Trait for Test {
     type Event = Event;
     type Currency = Balances;
     // type ValidatorOrigin = EnsureSignedBy<One, u64>;
     type Proposal = Call;
+    type ChainId = TestChainId;
 }
 
 parameter_types! {

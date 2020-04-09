@@ -8,7 +8,22 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 
 const TEST_THRESHOLD: u32 = 2;
-const TEST_CHAIN_ID: u32 = 5;
+const TEST_CHAIN_ID: u8 = 5;
+
+#[test]
+fn derive_ids() {
+    let chain = 1;
+    let id = [
+        0x21, 0x60, 0x5f, 0x71, 0x84, 0x5f, 0x37, 0x2a, 0x9e, 0xd8, 0x42, 0x53, 0xd2, 0xd0, 0x24,
+        0xb7, 0xb1, 0x09, 0x99, 0xf4,
+    ];
+    let r_id = derive_resource_id(chain, &id);
+    let expected = [
+        0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x21, 0x60, 0x5f, 0x71, 0x84, 0x5f,
+        0x37, 0x2a, 0x9e, 0xd8, 0x42, 0x53, 0xd2, 0xd0, 0x24, 0xb7, 0xb1, 0x09, 0x99, 0xf4, chain,
+    ];
+    assert_eq!(r_id, expected);
+}
 
 #[test]
 fn initialize_chain() {
@@ -19,7 +34,7 @@ fn initialize_chain() {
         let proposal = make_proposal(vec![10]);
         let dest_id = 2;
         let to = vec![2];
-        let token_id = vec![3];
+        let resource_id = [1; 32];
         let metadata = vec![];
 
         assert_noop!(
@@ -36,8 +51,8 @@ fn initialize_chain() {
             Bridge::transfer(
                 Origin::ROOT,
                 dest_id.clone(),
+                resource_id.clone(),
                 to.clone(),
-                token_id.clone(),
                 metadata.clone()
             ),
             Error::<Test>::NotInitialized
@@ -48,6 +63,24 @@ fn initialize_chain() {
             TEST_THRESHOLD,
             TEST_CHAIN_ID
         ));
+    })
+}
+
+#[test]
+fn setup_resources() {
+    new_test_ext().execute_with(|| {
+        let id: ResourceId = [1; 32];
+        let method = "Pallet.do_something".as_bytes().to_vec();
+        let method2 = "Pallet.do_somethingElse".as_bytes().to_vec();
+
+        assert_ok!(Bridge::set_resource(Origin::ROOT, id, method.clone()));
+        assert_eq!(Bridge::resources(id), Some(method));
+
+        assert_ok!(Bridge::set_resource(Origin::ROOT, id, method2.clone()));
+        assert_eq!(Bridge::resources(id), Some(method2));
+
+        assert_ok!(Bridge::remove_resource(Origin::ROOT, id));
+        assert_eq!(Bridge::resources(id), None);
     })
 }
 
@@ -101,7 +134,7 @@ fn asset_transfer_success() {
     new_test_ext().execute_with(|| {
         let dest_id = 2;
         let to = vec![2];
-        let token_id = vec![3];
+        let resource_id = [1; 32];
         let metadata = vec![];
 
         assert_ok!(Bridge::initialize(
@@ -114,8 +147,8 @@ fn asset_transfer_success() {
         assert_ok!(Bridge::transfer(
             Origin::ROOT,
             dest_id.clone(),
+            resource_id.clone(),
             to.clone(),
-            token_id.clone(),
             metadata.clone()
         ));
         assert_events(vec![
@@ -123,8 +156,8 @@ fn asset_transfer_success() {
             Event::bridge(RawEvent::Transfer(
                 dest_id.clone(),
                 1,
+                resource_id.clone(),
                 to.clone(),
-                token_id.clone(),
                 metadata.clone(),
             )),
         ]);
@@ -132,30 +165,30 @@ fn asset_transfer_success() {
         assert_ok!(Bridge::transfer(
             Origin::ROOT,
             dest_id.clone(),
+            resource_id.clone(),
             to.clone(),
-            token_id.clone(),
             metadata.clone()
         ));
         assert_events(vec![Event::bridge(RawEvent::Transfer(
             dest_id.clone(),
             2,
+            resource_id.clone(),
             to.clone(),
-            token_id.clone(),
             metadata.clone(),
         ))]);
 
         assert_ok!(Bridge::transfer(
             Origin::ROOT,
             dest_id.clone(),
+            resource_id.clone(),
             to.clone(),
-            token_id.clone(),
             metadata.clone()
         ));
         assert_events(vec![Event::bridge(RawEvent::Transfer(
             dest_id.clone(),
             3,
+            resource_id,
             to,
-            token_id,
             metadata,
         ))]);
     })
@@ -167,7 +200,7 @@ fn asset_transfer_invalid_chain() {
         let chain_id = 2;
         let to = vec![2];
         let bad_dest_id = 3;
-        let token_id = vec![4];
+        let resource_id = [4; 32];
         let metadata = vec![];
 
         assert_ok!(Bridge::initialize(
@@ -181,8 +214,8 @@ fn asset_transfer_invalid_chain() {
             Bridge::transfer(
                 Origin::ROOT,
                 bad_dest_id,
+                resource_id.clone(),
                 to.clone(),
-                token_id.clone(),
                 metadata.clone()
             ),
             Error::<Test>::ChainNotWhitelisted

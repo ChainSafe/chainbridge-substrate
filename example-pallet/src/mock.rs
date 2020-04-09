@@ -69,14 +69,14 @@ impl bridge::Trait for Test {
 }
 
 parameter_types! {
-    pub const HashTokenId: [u8; 16] = blake2_128(b"hash");
-    pub const NativeTokenId: [u8; 16] = blake2_128(b"DAV");
+    pub const HashId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub const NativeTokenId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"DAV"));
 }
 
 impl Trait for Test {
     type Event = Event;
     type BridgeOrigin = bridge::EnsureBridge<Test>;
-    type HashTokenId = HashTokenId;
+    type HashId = HashId;
     type NativeTokenId = NativeTokenId;
 }
 

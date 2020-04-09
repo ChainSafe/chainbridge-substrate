@@ -2,7 +2,7 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Event, Example, HashTokenId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
+    Event, Example, HashId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
     RELAYER_C,
 };
 use super::*;
@@ -13,7 +13,7 @@ use codec::Encode;
 use sp_core::{blake2_256, H256};
 
 const TEST_THRESHOLD: u32 = 2;
-const TEST_CHAIN_ID: u32 = 5;
+const TEST_CHAIN_ID: u8 = 5;
 
 fn make_remark_proposal(hash: H256) -> Call {
     Call::Example(crate::Call::remark(hash))
@@ -27,7 +27,7 @@ fn make_transfer_proposal(to: u64, amount: u32) -> Call {
 fn transfer_hash() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
-        let token_id = HashTokenId::get().to_vec();
+        let resource_id = HashId::get();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let recipient = vec![]; // No recipient
 
@@ -47,8 +47,8 @@ fn transfer_hash() {
         expect_event(bridge::RawEvent::Transfer(
             dest_chain,
             1,
+            resource_id,
             recipient,
-            token_id,
             hash.as_ref().to_vec(),
         ));
     })
@@ -58,7 +58,7 @@ fn transfer_hash() {
 fn transfer_native() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
-        let token_id = NativeTokenId::get().to_vec();
+        let resource_id = NativeTokenId::get();
         let amount: u32 = 100;
         let recipient = vec![99];
 
@@ -79,8 +79,8 @@ fn transfer_native() {
         expect_event(bridge::RawEvent::Transfer(
             dest_chain,
             1,
+            resource_id,
             recipient,
-            token_id,
             amount.to_le_bytes().to_vec(),
         ));
     })

@@ -17,8 +17,21 @@ mod tests;
 
 const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
-pub type ChainId = u32;
+pub type ChainId = u8;
 pub type DepositNonce = u32;
+pub type ResourceId = [u8; 32];
+
+/// Helper function to concatenate a chain ID and some bytes to produce a resource ID.
+/// The common format is (31 bytes unique ID + 1 byte chain ID).
+pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
+    let mut r_id: ResourceId = [0; 32];
+    r_id[31] = chain; // last byte is chain id
+    let range = if id.len() > 31 { 31 } else { id.len() }; // Use at most 31 bytes
+    for i in 0..range {
+        r_id[30 - i] = id[range - 1 - i]; // Ensure left padding for eth compatibility
+    }
+    return r_id;
+}
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
@@ -54,8 +67,8 @@ decl_event! {
         /// Relayer removed from set
         RelayerRemoved(AccountId),
 
-        /// Transfer is available for relaying (dest_id, nonce, to, token_id, metadata)
-        Transfer(ChainId, DepositNonce, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// Transfer is available for relaying (dest_id, nonce, resource_id, to, metadata)
+        Transfer(ChainId, DepositNonce, ResourceId, Vec<u8>, Vec<u8>),
 
         /// Vote submitted in favour of proposal
         VoteFor(u32, AccountId),
@@ -72,7 +85,6 @@ decl_event! {
     }
 }
 
-// TODO: Pass params to errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Root must call `initialize` to set params
@@ -110,7 +122,7 @@ decl_storage! {
         Initialized get(fn is_initialized): bool;
 
         /// The ChainId for this chain.
-        pub ChainIdentifier get(fn chain_id): u32;
+        pub ChainIdentifier get(fn chain_id): ChainId;
 
         /// All whitelisted chains and their respective transaction counts
         Chains get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
@@ -130,6 +142,9 @@ decl_storage! {
             double_map hasher(blake2_256) ChainId, hasher(blake2_256) (DepositNonce, T::Proposal)
             => Option<ProposalVotes<T::AccountId>>;
 
+        /// Utilized by the bridge software to map resource IDs to actual methods
+        pub Resources get(fn resources):
+            map hasher(blake2_256) ResourceId => Option<Vec<u8>>
     }
 }
 
@@ -155,6 +170,18 @@ decl_module! {
             ensure!(threshold > 0, Error::<T>::InvalidThreshold);
             RelayerThreshold::put(threshold);
             Self::deposit_event(RawEvent::RelayerThresholdChanged(threshold));
+            Ok(())
+        }
+
+        pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
+            ensure_root(origin)?;
+            <Resources>::insert(id, method);
+            Ok(())
+        }
+
+        pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
+            ensure_root(origin)?;
+            <Resources>::remove(id);
             Ok(())
         }
 
@@ -217,7 +244,7 @@ decl_module! {
 
         /// Completes a transfer fromo the chain by emitting an event to be acted on by the
         /// bridge and updating the tx count for the respective chain.
-        pub fn transfer(origin, dest_id: ChainId, to: Vec<u8>, token_id: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
+        pub fn transfer(origin, dest_id: ChainId, resource_id: ResourceId, to: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(Self::is_initialized(), Error::<T>::NotInitialized);
 
@@ -225,7 +252,7 @@ decl_module! {
             if let Some(mut nonce) = Chains::get(&dest_id) {
                 // Increment counter, emit event and store
                 nonce += 1;
-                Self::deposit_event(RawEvent::Transfer(dest_id, nonce, to, token_id, metadata));
+                Self::deposit_event(RawEvent::Transfer(dest_id, nonce, resource_id, to, metadata));
                 Chains::insert(&dest_id, nonce);
                 Ok(())
             } else {

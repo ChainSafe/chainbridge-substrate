@@ -28,7 +28,6 @@ fn transfer_hash() {
         let dest_chain = 0;
         let resource_id = HashId::get();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
-        let recipient = vec![]; // No recipient
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
@@ -39,11 +38,10 @@ fn transfer_hash() {
             dest_chain,
         ));
 
-        expect_event(bridge::RawEvent::Transfer(
+        expect_event(bridge::RawEvent::GenericTransfer(
             dest_chain,
             1,
             resource_id,
-            recipient,
             hash.as_ref().to_vec(),
         ));
     })
@@ -65,12 +63,12 @@ fn transfer_native() {
             dest_chain,
         ));
 
-        expect_event(bridge::RawEvent::Transfer(
+        expect_event(bridge::RawEvent::FungibleTransfer(
             dest_chain,
             1,
             resource_id,
+            amount,
             recipient,
-            amount.to_le_bytes().to_vec(),
         ));
     })
 }

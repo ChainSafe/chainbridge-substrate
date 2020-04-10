@@ -47,9 +47,8 @@ decl_module! {
             ensure_signed(origin)?;
 
             let resource_id = T::HashId::get();
-            let recipient = vec![]; // No recipient
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, resource_id, recipient, metadata)
+            <bridge::Module<T>>::transfer_generic(RawOrigin::Root.into(), dest_id, resource_id, metadata)
         }
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
@@ -59,8 +58,7 @@ decl_module! {
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let resource_id = T::NativeTokenId::get();
-            let metadata: Vec<u8> = amount.to_le_bytes().to_vec();
-            <bridge::Module<T>>::transfer(RawOrigin::Root.into(), dest_id, resource_id, recipient, metadata)
+            <bridge::Module<T>>::transfer_fungible(RawOrigin::Root.into(), dest_id, resource_id, recipient, amount)
         }
 
         //

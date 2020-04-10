@@ -55,7 +55,8 @@ pub trait Trait: system::Trait {
     type Currency: Currency<Self::AccountId>;
     /// Proposed dispatchable call
     type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike;
-
+    /// The identifier for this chain.
+    /// This must be unique and must not collide with existing IDs within a set of bridged chains.
     type ChainId: Get<ChainId>;
 }
 
@@ -92,10 +93,6 @@ decl_event! {
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Root must call `initialize` to set params
-        NotInitialized,
-        /// Initialization has already been done
-        AlreadyInitialized,
         /// Relayer threshold not set
         ThresholdNotSet,
         /// Provided chain Id is not valid
@@ -104,11 +101,13 @@ decl_error! {
         InvalidThreshold,
         /// Interactions with this chain is not permitted
         ChainNotWhitelisted,
+        /// Chain has already been enabled
+        ChainAlreadyWhitelisted,
         /// Relayer already in set
         RelayerAlreadyExists,
         /// Provided accountId is not a relayer
         RelayerInvalid,
-        /// Protected operation, much be performed by relayer
+        /// Protected operation, must be performed by relayer
         MustBeRelayer,
         /// Relayer has already submitted some vote for this proposal
         RelayerAlreadyVoted,
@@ -124,7 +123,7 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
         /// All whitelisted chains and their respective transaction counts
-        Chains get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
+        ChainNonces get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
 
         /// Number of votes required for a proposal to execute
         RelayerThreshold get(fn relayer_threshold): u32 = DEFAULT_RELAYER_THRESHOLD;
@@ -163,12 +162,14 @@ decl_module! {
             Ok(())
         }
 
+        /// Store a resourceId mapping
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
             <Resources>::insert(id, method);
             Ok(())
         }
 
+        /// Remove a resourceId mapping
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
             ensure_root(origin)?;
             <Resources>::remove(id);
@@ -181,8 +182,10 @@ decl_module! {
 
             // Cannot whitelist this chain
             ensure!(id != T::ChainId::get(), Error::<T>::InvalidChainId);
+            // Cannot whitelist with an existing entry
+            ensure!(!Self::chain_whitelisted(id), Error::<T>::ChainAlreadyWhitelisted);
 
-            Chains::insert(&id, 0);
+            ChainNonces::insert(&id, 0);
             Self::deposit_event(RawEvent::ChainWhitelisted(id));
             Ok(())
         }
@@ -226,28 +229,8 @@ decl_module! {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
 
+            ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
             Self::vote_against(who, nonce, src_id, call)
-        }
-
-        pub fn transfer_fungible(origin, dest_id: ChainId, resource_id: ResourceId, to: Vec<u8>, amount: u32) {
-            ensure_root(origin)?;
-            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
-            let nonce = Self::bump_nonce(dest_id);
-            Self::deposit_event(RawEvent::FungibleTransfer(dest_id, nonce, resource_id, amount, to));
-        }
-
-        pub fn transfer_nonfungible(origin, dest_id: ChainId, resource_id: ResourceId, token_id: Vec<u8>, to: Vec<u8>, metadata: Vec<u8>) {
-            ensure_root(origin)?;
-            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
-            let nonce = Self::bump_nonce(dest_id);
-            Self::deposit_event(RawEvent::NonFungibleTransfer(dest_id, nonce, resource_id, token_id, to, metadata));
-        }
-
-        pub fn transfer_generic(origin, dest_id: ChainId, resource_id: ResourceId, metadata: Vec<u8>) {
-            ensure_root(origin)?;
-            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
-            let nonce = Self::bump_nonce(dest_id);
-            Self::deposit_event(RawEvent::GenericTransfer(dest_id, nonce, resource_id, metadata));
         }
     }
 }
@@ -264,13 +247,14 @@ impl<T: Trait> Module<T> {
         MODULE_ID.into_account()
     }
 
-    fn chain_whitelisted(id: ChainId) -> bool {
+    /// Checks if a chain exists as a whitelisted destination
+    pub fn chain_whitelisted(id: ChainId) -> bool {
         return Self::chains(id) != None;
     }
 
     fn bump_nonce(id: ChainId) -> DepositNonce {
         let nonce = Self::chains(id).unwrap_or_default() + 1;
-        <Chains>::insert(id, nonce);
+        <ChainNonces>::insert(id, nonce);
         nonce
     }
 
@@ -284,20 +268,23 @@ impl<T: Trait> Module<T> {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
+        // Ensure the proposal isn't complete already
+        if votes.votes_for.len() >= <RelayerThreshold>::get() as usize {
+            Err(Error::<T>::ProposalAlreadyComplete)?
+        }
+
         if !votes.votes_for.contains(&who) {
             // Vote and store
             votes.votes_for.push(who.clone());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
-
             Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
 
             // Check if finalization is possible
             if votes.votes_for.len() == <RelayerThreshold>::get() as usize {
-                Self::finalize_execution(src_id, nonce, prop)?
-            } else if votes.votes_for.len() > <RelayerThreshold>::get() as usize {
-                Err(Error::<T>::ProposalAlreadyComplete)?
+                Self::finalize_execution(src_id, nonce, prop)
+            } else {
+                Ok(())
             }
-            Ok(())
         } else {
             Err(Error::<T>::RelayerAlreadyVoted)?
         }
@@ -314,21 +301,26 @@ impl<T: Trait> Module<T> {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
+        // Ensure the proposal isn't complete already
+        if votes.votes_against.len() > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
+        {
+            Err(Error::<T>::ProposalAlreadyComplete)?
+        }
+
         if !votes.votes_against.contains(&who) {
             // Vote and store
             votes.votes_against.push(who.clone());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
-
             Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
 
             // Check if cancellation is possible
             if votes.votes_against.len()
                 > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
             {
-                Self::cancel_execution(src_id, nonce)?
+                Self::cancel_execution(src_id, nonce)
+            } else {
+                Ok(())
             }
-
-            Ok(())
         } else {
             Err(Error::<T>::RelayerAlreadyVoted)?
         }
@@ -352,6 +344,72 @@ impl<T: Trait> Module<T> {
     fn cancel_execution(src_id: ChainId, nonce: DepositNonce) -> DispatchResult {
         // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalRejected(src_id, nonce));
+        Ok(())
+    }
+
+    /// Initiates a transfer of a fungible asset out of the chain. This should be called by another pallet.
+    pub fn transfer_fungible(
+        dest_id: ChainId,
+        resource_id: ResourceId,
+        to: Vec<u8>,
+        amount: u32,
+    ) -> DispatchResult {
+        ensure!(
+            Self::chain_whitelisted(dest_id),
+            Error::<T>::ChainNotWhitelisted
+        );
+        let nonce = Self::bump_nonce(dest_id);
+        Self::deposit_event(RawEvent::FungibleTransfer(
+            dest_id,
+            nonce,
+            resource_id,
+            amount,
+            to,
+        ));
+        Ok(())
+    }
+
+    /// Initiates a transfer of a nonfungible asset out of the chain. This should be called by another pallet.
+    pub fn transfer_nonfungible(
+        dest_id: ChainId,
+        resource_id: ResourceId,
+        token_id: Vec<u8>,
+        to: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> DispatchResult {
+        ensure!(
+            Self::chain_whitelisted(dest_id),
+            Error::<T>::ChainNotWhitelisted
+        );
+        let nonce = Self::bump_nonce(dest_id);
+        Self::deposit_event(RawEvent::NonFungibleTransfer(
+            dest_id,
+            nonce,
+            resource_id,
+            token_id,
+            to,
+            metadata,
+        ));
+        Ok(())
+    }
+
+    /// Initiates a transfer of generic data out of the chain. This should be called by another pallet.
+    pub fn transfer_generic(
+        dest_id: ChainId,
+        resource_id: ResourceId,
+        metadata: Vec<u8>,
+    ) -> DispatchResult {
+        ensure!(
+            Self::chain_whitelisted(dest_id),
+            Error::<T>::ChainNotWhitelisted
+        );
+        let nonce = Self::bump_nonce(dest_id);
+        Self::deposit_event(RawEvent::GenericTransfer(
+            dest_id,
+            nonce,
+            resource_id,
+            metadata,
+        ));
         Ok(())
     }
 }

@@ -89,7 +89,6 @@ fn asset_transfer_success() {
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
         assert_ok!(Bridge::transfer_fungible(
-            Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
             to.clone(),
@@ -107,7 +106,6 @@ fn asset_transfer_success() {
         ]);
 
         assert_ok!(Bridge::transfer_nonfungible(
-            Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
             token_id.clone(),
@@ -124,7 +122,6 @@ fn asset_transfer_success() {
         ))]);
 
         assert_ok!(Bridge::transfer_generic(
-            Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
             metadata.clone()
@@ -151,24 +148,17 @@ fn asset_transfer_invalid_chain() {
         ))]);
 
         assert_noop!(
-            Bridge::transfer_fungible(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![], 0,),
+            Bridge::transfer_fungible(bad_dest_id, resource_id.clone(), vec![], 0,),
             Error::<Test>::ChainNotWhitelisted
         );
 
         assert_noop!(
-            Bridge::transfer_nonfungible(
-                Origin::ROOT,
-                bad_dest_id,
-                resource_id.clone(),
-                vec![],
-                vec![],
-                vec![]
-            ),
+            Bridge::transfer_nonfungible(bad_dest_id, resource_id.clone(), vec![], vec![], vec![]),
             Error::<Test>::ChainNotWhitelisted
         );
 
         assert_noop!(
-            Bridge::transfer_generic(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![]),
+            Bridge::transfer_generic(bad_dest_id, resource_id.clone(), vec![]),
             Error::<Test>::ChainNotWhitelisted
         );
     })
@@ -225,7 +215,7 @@ fn create_sucessful_proposal() {
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
         assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
-        assert_eq!(Bridge::relayer_threshold(), 2);
+        assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(

@@ -116,6 +116,6 @@ pub fn assert_events(mut expected: Vec<Event>) {
 
     for evt in expected {
         let next = actual.pop().expect("event expected");
-        assert_eq!(next, evt.into(), "Events don't match");
+        assert_eq!(next, evt.into(), "Events don't match (actual,expected)");
     }
 }

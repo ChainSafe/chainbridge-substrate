@@ -82,55 +82,57 @@ fn asset_transfer_success() {
         let to = vec![2];
         let resource_id = [1; 32];
         let metadata = vec![];
+        let amount = 100;
+        let token_id = vec![1, 2, 3, 4];
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
-        assert_ok!(Bridge::transfer(
+        assert_ok!(Bridge::transfer_fungible(
             Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
             to.clone(),
-            metadata.clone()
+            amount
         ));
         assert_events(vec![
             Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
-            Event::bridge(RawEvent::Transfer(
+            Event::bridge(RawEvent::FungibleTransfer(
                 dest_id.clone(),
                 1,
                 resource_id.clone(),
+                amount,
                 to.clone(),
-                metadata.clone(),
             )),
         ]);
 
-        assert_ok!(Bridge::transfer(
+        assert_ok!(Bridge::transfer_nonfungible(
             Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
+            token_id.clone(),
             to.clone(),
             metadata.clone()
         ));
-        assert_events(vec![Event::bridge(RawEvent::Transfer(
+        assert_events(vec![Event::bridge(RawEvent::NonFungibleTransfer(
             dest_id.clone(),
             2,
             resource_id.clone(),
+            token_id,
             to.clone(),
             metadata.clone(),
         ))]);
 
-        assert_ok!(Bridge::transfer(
+        assert_ok!(Bridge::transfer_generic(
             Origin::ROOT,
             dest_id.clone(),
             resource_id.clone(),
-            to.clone(),
             metadata.clone()
         ));
-        assert_events(vec![Event::bridge(RawEvent::Transfer(
+        assert_events(vec![Event::bridge(RawEvent::GenericTransfer(
             dest_id.clone(),
             3,
             resource_id,
-            to,
             metadata,
         ))]);
     })
@@ -140,25 +142,35 @@ fn asset_transfer_success() {
 fn asset_transfer_invalid_chain() {
     new_test_ext().execute_with(|| {
         let chain_id = 2;
-        let to = vec![2];
         let bad_dest_id = 3;
         let resource_id = [4; 32];
-        let metadata = vec![];
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
-        assert_noop!(
-            Bridge::transfer(
-                Origin::ROOT,
-                bad_dest_id,
-                resource_id.clone(),
-                to.clone(),
-                metadata.clone()
-            ),
-            Error::<Test>::ChainNotWhitelisted
-        );
         assert_events(vec![Event::bridge(RawEvent::ChainWhitelisted(
             chain_id.clone(),
         ))]);
+
+        assert_noop!(
+            Bridge::transfer_fungible(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![], 0,),
+            Error::<Test>::ChainNotWhitelisted
+        );
+
+        assert_noop!(
+            Bridge::transfer_nonfungible(
+                Origin::ROOT,
+                bad_dest_id,
+                resource_id.clone(),
+                vec![],
+                vec![],
+                vec![]
+            ),
+            Error::<Test>::ChainNotWhitelisted
+        );
+
+        assert_noop!(
+            Bridge::transfer_generic(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![]),
+            Error::<Test>::ChainNotWhitelisted
+        );
     })
 }
 

@@ -69,10 +69,12 @@ decl_event! {
         RelayerAdded(AccountId),
         /// Relayer removed from set
         RelayerRemoved(AccountId),
-
-        /// Transfer is available for relaying (dest_id, nonce, resource_id, to, metadata)
-        Transfer(ChainId, DepositNonce, ResourceId, Vec<u8>, Vec<u8>),
-
+        /// FunglibleTransfer is for relaying fungibles (dest_id, nonce, resource_id, amount, recipient, metadata)
+        FungibleTransfer(ChainId, DepositNonce, ResourceId, u32, Vec<u8>),
+        /// NonFungibleTransfer is for relaying NFTS (dest_id, nonce, resource_id, token_id, recipient, metadata)
+        NonFungibleTransfer(ChainId, DepositNonce, ResourceId, Vec<u8>, Vec<u8>, Vec<u8>),
+        /// GenericTransfer is for a generic data payload (dest_id, nonce, resource_id, metadata)
+        GenericTransfer(ChainId, DepositNonce, ResourceId, Vec<u8>),
         /// Vote submitted in favour of proposal
         VoteFor(ChainId, DepositNonce, AccountId),
         /// Vot submitted against proposal
@@ -227,21 +229,25 @@ decl_module! {
             Self::vote_against(who, nonce, src_id, call)
         }
 
-        /// Completes a transfer fromo the chain by emitting an event to be acted on by the
-        /// bridge and updating the tx count for the respective chain.
-        pub fn transfer(origin, dest_id: ChainId, resource_id: ResourceId, to: Vec<u8>, metadata: Vec<u8>) -> DispatchResult {
+        pub fn transfer_fungible(origin, dest_id: ChainId, resource_id: ResourceId, to: Vec<u8>, amount: u32) {
             ensure_root(origin)?;
+            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
+            let nonce = Self::bump_nonce(dest_id);
+            Self::deposit_event(RawEvent::FungibleTransfer(dest_id, nonce, resource_id, amount, to));
+        }
 
-            // Ensure chain is whitelisted
-            if let Some(mut nonce) = Chains::get(&dest_id) {
-                // Increment counter, emit event and store
-                nonce += 1;
-                Self::deposit_event(RawEvent::Transfer(dest_id, nonce, resource_id, to, metadata));
-                Chains::insert(&dest_id, nonce);
-                Ok(())
-            } else {
-                Err(Error::<T>::ChainNotWhitelisted)?
-            }
+        pub fn transfer_nonfungible(origin, dest_id: ChainId, resource_id: ResourceId, token_id: Vec<u8>, to: Vec<u8>, metadata: Vec<u8>) {
+            ensure_root(origin)?;
+            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
+            let nonce = Self::bump_nonce(dest_id);
+            Self::deposit_event(RawEvent::NonFungibleTransfer(dest_id, nonce, resource_id, token_id, to, metadata));
+        }
+
+        pub fn transfer_generic(origin, dest_id: ChainId, resource_id: ResourceId, metadata: Vec<u8>) {
+            ensure_root(origin)?;
+            ensure!(Self::chain_whitelisted(dest_id), Error::<T>::ChainNotWhitelisted);
+            let nonce = Self::bump_nonce(dest_id);
+            Self::deposit_event(RawEvent::GenericTransfer(dest_id, nonce, resource_id, metadata));
         }
     }
 }
@@ -260,6 +266,12 @@ impl<T: Trait> Module<T> {
 
     fn chain_whitelisted(id: ChainId) -> bool {
         return Self::chains(id) != None;
+    }
+
+    fn bump_nonce(id: ChainId) -> DepositNonce {
+        let nonce = Self::chains(id).unwrap_or_default() + 1;
+        <Chains>::insert(id, nonce);
+        nonce
     }
 
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.

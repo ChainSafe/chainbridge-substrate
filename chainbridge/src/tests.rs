@@ -83,7 +83,7 @@ fn asset_transfer_success() {
         let resource_id = [1; 32];
         let metadata = vec![];
         let amount = 100;
-        let token_id = vec![1,2,3,4];
+        let token_id = vec![1, 2, 3, 4];
 
         assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
 
@@ -120,7 +120,7 @@ fn asset_transfer_success() {
             resource_id.clone(),
             token_id,
             to.clone(),
-            metadata.clone()
+            metadata.clone(),
         ))]);
 
         assert_ok!(Bridge::transfer_generic(
@@ -151,13 +151,7 @@ fn asset_transfer_invalid_chain() {
         ))]);
 
         assert_noop!(
-            Bridge::transfer_fungible(
-                Origin::ROOT,
-                bad_dest_id,
-                resource_id.clone(),
-                vec![],
-                0,
-            ),
+            Bridge::transfer_fungible(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![], 0,),
             Error::<Test>::ChainNotWhitelisted
         );
 
@@ -173,14 +167,8 @@ fn asset_transfer_invalid_chain() {
             Error::<Test>::ChainNotWhitelisted
         );
 
-
         assert_noop!(
-            Bridge::transfer_generic(
-                Origin::ROOT,
-                bad_dest_id,
-                resource_id.clone(),
-                vec![]
-            ),
+            Bridge::transfer_generic(Origin::ROOT, bad_dest_id, resource_id.clone(), vec![]),
             Error::<Test>::ChainNotWhitelisted
         );
     })

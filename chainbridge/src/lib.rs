@@ -2,9 +2,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    traits::Currency, traits::Get, Parameter,
-    weights::{SimpleDispatchInfo, GetDispatchInfo, DispatchClass, FunctionOf, Weight}
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::DispatchResult,
+    ensure,
+    traits::Currency,
+    traits::Get,
+    weights::{DispatchClass, FunctionOf, GetDispatchInfo, SimpleDispatchInfo, Weight},
+    Parameter,
 };
 
 use frame_system::{self as system, ensure_root, ensure_signed};
@@ -37,9 +41,38 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub enum ProposalStatus {
+    Active,
+    Approved,
+    Rejected,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct ProposalVotes<AccountId> {
     pub votes_for: Vec<AccountId>,
     pub votes_against: Vec<AccountId>,
+    pub status: ProposalStatus,
+}
+
+impl<T> ProposalVotes<T> {
+    /// Attempts to mark the proposal as approve or rejected.
+    /// Returns true if the status changes from active.
+    fn try_to_complete(&mut self, threshold: u32, total: u32) -> bool {
+        if self.votes_for.len() >= threshold as usize {
+            self.status = ProposalStatus::Approved;
+            true
+        } else if self.votes_against.len() > (total - threshold) as usize {
+            self.status = ProposalStatus::Rejected;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if the proposal has been rejected or approved, otherwise false.
+    fn is_complete(&self) -> bool {
+        self.status != ProposalStatus::Active
+    }
 }
 
 impl<AccountId> Default for ProposalVotes<AccountId> {
@@ -47,6 +80,7 @@ impl<AccountId> Default for ProposalVotes<AccountId> {
         Self {
             votes_for: vec![],
             votes_against: vec![],
+            status: ProposalStatus::Active,
         }
     }
 }
@@ -315,10 +349,6 @@ impl<T: Trait> Module<T> {
         nonce
     }
 
-
-
-    //TODO: need to check both pass/fail to decide if its already complete
-
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
     fn vote_for(
         who: T::AccountId,
@@ -330,18 +360,17 @@ impl<T: Trait> Module<T> {
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
         // Ensure the proposal isn't complete already
-        if votes.votes_for.len() >= <RelayerThreshold>::get() as usize {
-            Err(Error::<T>::ProposalAlreadyComplete)?
-        }
+        ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
 
         if !votes.votes_for.contains(&who) {
             // Vote and store
             votes.votes_for.push(who.clone());
+            // Check if finalization is possible
+            let complete = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
             Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
 
-            // Check if finalization is possible
-            if votes.votes_for.len() == <RelayerThreshold>::get() as usize {
+            if complete {
                 Self::finalize_execution(src_id, nonce, prop)
             } else {
                 Ok(())
@@ -363,21 +392,18 @@ impl<T: Trait> Module<T> {
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
 
         // Ensure the proposal isn't complete already
-        if votes.votes_against.len() > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
-        {
-            Err(Error::<T>::ProposalAlreadyComplete)?
-        }
+        ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
 
         if !votes.votes_against.contains(&who) {
             // Vote and store
             votes.votes_against.push(who.clone());
+
+            // Check if cancellation is possible
+            let complete = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
             Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
 
-            // Check if cancellation is possible
-            if votes.votes_against.len()
-                > (<RelayerCount>::get() - <RelayerThreshold>::get()) as usize
-            {
+            if complete {
                 Self::cancel_execution(src_id, nonce)
             } else {
                 Ok(())

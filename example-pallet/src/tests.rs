@@ -171,6 +171,7 @@ fn create_sucessful_transfer_proposal() {
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
+            status: bridge::ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -185,6 +186,7 @@ fn create_sucessful_transfer_proposal() {
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
+            status: bridge::ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -199,6 +201,7 @@ fn create_sucessful_transfer_proposal() {
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
+            status: bridge::ProposalStatus::Approved,
         };
         assert_eq!(prop, expected);
 

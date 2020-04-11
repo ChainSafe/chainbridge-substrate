@@ -228,6 +228,7 @@ fn create_sucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
+            status: ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -242,6 +243,7 @@ fn create_sucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
+            status: ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -256,6 +258,7 @@ fn create_sucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
+            status: ProposalStatus::Approved,
         };
         assert_eq!(prop, expected);
 
@@ -293,6 +296,7 @@ fn create_unsucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
+            status: ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -307,6 +311,7 @@ fn create_unsucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
+            status: ProposalStatus::Active,
         };
         assert_eq!(prop, expected);
 
@@ -321,6 +326,7 @@ fn create_unsucessful_proposal() {
         let expected = ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B, RELAYER_C],
+            status: ProposalStatus::Rejected,
         };
         assert_eq!(prop, expected);
 

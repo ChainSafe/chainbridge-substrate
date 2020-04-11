@@ -4,9 +4,11 @@
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
     traits::Currency, traits::Get, Parameter,
+    weights::{SimpleDispatchInfo, GetDispatchInfo, DispatchClass, FunctionOf, Weight}
 };
+
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin, SaturatedConversion};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -54,7 +56,7 @@ pub trait Trait: system::Trait {
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
     /// Proposed dispatchable call
-    type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike;
+    type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
     /// The identifier for this chain.
     /// This must be unique and must not collide with existing IDs within a set of bridged chains.
     type ChainId: Get<ChainId>;
@@ -148,11 +150,21 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        type Error = Error<T>;
+
         const ChainIdentity: ChainId = T::ChainId::get();
 
         fn deposit_event() = default;
 
-        /// Sets the vote threshold for proposals
+        /// Sets the vote threshold for proposals.
+        ///
+        /// This threshold is used to determine how many votes are required
+        /// before a proposal is executed.
+        ///
+        /// # <weight>
+        /// - O(1) lookup and insert
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -162,21 +174,39 @@ decl_module! {
             Ok(())
         }
 
-        /// Store a resourceId mapping
+        /// Stores a method name on chain under an associated resource ID.
+        ///
+        /// # <weight>
+        /// - O(1) write
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
             <Resources>::insert(id, method);
             Ok(())
         }
 
-        /// Remove a resourceId mapping
+        /// Removes a resource ID from the resource mapping.
+        ///
+        /// After this call, bridge transfers with the associated resource ID will
+        /// be rejected.
+        ///
+        /// # <weight>
+        /// - O(1) removal
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
             ensure_root(origin)?;
             <Resources>::remove(id);
             Ok(())
         }
 
-        /// Enables a chain ID as a destination for a bridge transfer
+        /// Enables a chain ID as a source or destination for a bridge transfer.
+        ///
+        /// # <weight>
+        /// - O(1) lookup and insert
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -190,7 +220,12 @@ decl_module! {
             Ok(())
         }
 
-        /// Adds a new relayer to the set. Errors if relayer already exists.
+        /// Adds a new relayer to the relayer set.
+        ///
+        /// # <weight>
+        /// - O(1) lookup and insert
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -202,7 +237,12 @@ decl_module! {
             Ok(())
         }
 
-        /// Removes an existing relayer from the set. Errors if relayer doesn't exist.
+        /// Removes an existing relayer from the set.
+        ///
+        /// # <weight>
+        /// - O(1) lookup and removal
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -213,8 +253,19 @@ decl_module! {
             Ok(())
         }
 
-        /// Commits a vote in favour of the proposal. This may be called to initially create and
-        /// vote for the proposal, or to simply vote.
+        /// Commits a vote in favour of the provided proposal.
+        ///
+        /// If a proposal with the given nonce and source chain ID does not already exist, it will
+        /// be created with an initial vote in favour from the caller.
+        ///
+        /// # <weight>
+        /// - weight of proposed call, regardless of whether execution is performed
+        /// # </weight>
+        #[weight = FunctionOf(
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight,
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
+            true
+        )]
         pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -223,8 +274,14 @@ decl_module! {
             Self::vote_for(who, nonce, src_id, call)
         }
 
-        /// Votes against the proposal IFF it exists.
-        /// (Note: Proposal cancellation not yet fully implemented)
+        /// Commits a vote against a provided proposal.
+        ///
+        /// This is not yet fully implemented.
+        ///
+        /// # <weight>
+        /// - Fixed, since execution of proposal should not be included
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn reject(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -257,6 +314,10 @@ impl<T: Trait> Module<T> {
         <ChainNonces>::insert(id, nonce);
         nonce
     }
+
+
+
+    //TODO: need to check both pass/fail to decide if its already complete
 
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
     fn vote_for(

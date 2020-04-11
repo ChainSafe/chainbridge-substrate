@@ -7,12 +7,12 @@ use frame_support::{
     ensure,
     traits::Currency,
     traits::Get,
-    weights::{DispatchClass, FunctionOf, GetDispatchInfo, SimpleDispatchInfo, Weight},
+    weights::{FunctionOf, GetDispatchInfo, SimpleDispatchInfo},
     Parameter,
 };
 
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin, SaturatedConversion};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 

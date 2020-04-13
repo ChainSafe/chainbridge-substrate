@@ -298,7 +298,7 @@ decl_module! {
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
         #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight,
+            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight + 500_000,
             |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().class,
             true
         )]

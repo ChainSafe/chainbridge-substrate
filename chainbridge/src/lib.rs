@@ -25,7 +25,7 @@ const DEFAULT_RELAYER_THRESHOLD: u32 = 1;
 const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
 
 pub type ChainId = u8;
-pub type DepositNonce = u32;
+pub type DepositNonce = u64;
 pub type ResourceId = [u8; 32];
 
 /// Helper function to concatenate a chain ID and some bytes to produce a resource ID.
@@ -139,6 +139,8 @@ decl_error! {
         ChainNotWhitelisted,
         /// Chain has already been enabled
         ChainAlreadyWhitelisted,
+        /// Resource ID provided isn't mapped to anything
+        ResourceDoesNotExist,
         /// Relayer already in set
         RelayerAlreadyExists,
         /// Provided accountId is not a relayer
@@ -296,15 +298,16 @@ decl_module! {
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
         #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight,
-            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
+            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight,
+            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().class,
             true
         )]
-        pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
-
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
+            ensure!(Self::resource_exists(r_id), Error::<T>::ResourceDoesNotExist);
+
             Self::vote_for(who, nonce, src_id, call)
         }
 
@@ -316,11 +319,12 @@ decl_module! {
         /// - Fixed, since execution of proposal should not be included
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn reject(origin, nonce: DepositNonce, src_id: ChainId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn reject(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
-
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
+            ensure!(Self::resource_exists(r_id), Error::<T>::ResourceDoesNotExist);
+
             Self::vote_against(who, nonce, src_id, call)
         }
     }
@@ -341,6 +345,10 @@ impl<T: Trait> Module<T> {
     /// Checks if a chain exists as a whitelisted destination
     pub fn chain_whitelisted(id: ChainId) -> bool {
         return Self::chains(id) != None;
+    }
+
+    pub fn resource_exists(id: ResourceId) -> bool {
+        return Self::resources(id) != None;
     }
 
     fn bump_nonce(id: ChainId) -> DepositNonce {

@@ -2,12 +2,11 @@
 
 use super::mock::{
     assert_events, new_test_ext, Balances, Bridge, Call, Event, Origin, Test, TestChainId,
-    ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
+    ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C, TEST_THRESHOLD,
 };
 use super::*;
+use crate::mock::new_test_ext_initialized;
 use frame_support::{assert_noop, assert_ok};
-
-const TEST_THRESHOLD: u32 = 2;
 
 #[test]
 fn derive_ids() {
@@ -205,23 +204,19 @@ fn make_proposal(r: Vec<u8>) -> mock::Call {
 
 #[test]
 fn create_sucessful_proposal() {
-    new_test_ext().execute_with(|| {
+    let src_id = 1;
+    let r_id = derive_resource_id(src_id, b"remark");
+
+    new_test_ext_initialized(src_id, r_id, b"System.remark".to_vec()).execute_with(|| {
         let prop_id = 1;
         let proposal = make_proposal(vec![10]);
-        let src_id = 1;
-
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
-        assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
@@ -237,6 +232,7 @@ fn create_sucessful_proposal() {
             Origin::signed(RELAYER_B),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
@@ -252,6 +248,7 @@ fn create_sucessful_proposal() {
             Origin::signed(RELAYER_C),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
@@ -274,22 +271,19 @@ fn create_sucessful_proposal() {
 
 #[test]
 fn create_unsucessful_proposal() {
-    new_test_ext().execute_with(|| {
-        let prop_id = 1;
-        let src_id = 1;
-        let proposal = make_proposal(vec![11]);
+    let src_id = 1;
+    let r_id = derive_resource_id(src_id, b"transfer");
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
+    new_test_ext_initialized(src_id, r_id, b"System.remark".to_vec()).execute_with(|| {
+        let prop_id = 1;
+        let proposal = make_proposal(vec![11]);
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
@@ -305,6 +299,7 @@ fn create_unsucessful_proposal() {
             Origin::signed(RELAYER_B),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
@@ -320,6 +315,7 @@ fn create_unsucessful_proposal() {
             Origin::signed(RELAYER_C),
             prop_id,
             src_id,
+            r_id,
             Box::new(proposal.clone())
         ));
         let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();

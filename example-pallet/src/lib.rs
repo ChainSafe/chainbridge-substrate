@@ -3,8 +3,8 @@
 
 use chainbridge as bridge;
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_event, decl_module, dispatch::DispatchResult};
-use frame_system::{self as system, ensure_signed, RawOrigin};
+use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
+use frame_system::{self as system, ensure_signed};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
 
@@ -31,6 +31,12 @@ decl_event! {
     }
 }
 
+decl_error! {
+    pub enum Error for Module<T: Trait>{
+        InvalidTransfer,
+    }
+}
+
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         const HashId: ResourceId = T::HashId::get();
@@ -48,17 +54,18 @@ decl_module! {
 
             let resource_id = T::HashId::get();
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <bridge::Module<T>>::transfer_generic(RawOrigin::Root.into(), dest_id, resource_id, metadata)
+            <bridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)
         }
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
         pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: bridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
+            ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
             let bridge_id = <bridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let resource_id = T::NativeTokenId::get();
-            <bridge::Module<T>>::transfer_fungible(RawOrigin::Root.into(), dest_id, resource_id, recipient, amount)
+            <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, amount)
         }
 
         //

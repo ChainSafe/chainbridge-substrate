@@ -2,7 +2,7 @@
 
 use super::*;
 
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
+use frame_support::{assert_ok, ord_parameter_types, parameter_types, weights::Weight};
 use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
@@ -91,6 +91,7 @@ pub const RELAYER_A: u64 = 0x2;
 pub const RELAYER_B: u64 = 0x3;
 pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
+pub const TEST_THRESHOLD: u32 = 2;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -102,6 +103,29 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .build_storage()
     .unwrap()
     .into()
+}
+
+pub fn new_test_ext_initialized(
+    src_id: ChainId,
+    r_id: ResourceId,
+    resource: Vec<u8>,
+) -> sp_io::TestExternalities {
+    let mut t = new_test_ext();
+    t.execute_with(|| {
+        // Set and check threshold
+        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD));
+        assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
+        // Add relayers
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
+        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        // Whitelist chain
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
+        // Set and check resource ID mapped to some junk data
+        assert_ok!(Bridge::set_resource(Origin::ROOT, r_id, resource));
+        assert_eq!(Bridge::resource_exists(r_id), true);
+    });
+    t
 }
 
 // Checks events against the latest. A contiguous set of events must be provided. They must
@@ -116,6 +140,6 @@ pub fn assert_events(mut expected: Vec<Event>) {
 
     for evt in expected {
         let next = actual.pop().expect("event expected");
-        assert_eq!(next, evt.into(), "Events don't match");
+        assert_eq!(next, evt.into(), "Events don't match (actual,expected)");
     }
 }

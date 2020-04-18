@@ -87,6 +87,17 @@ decl_module! {
 
             Ok(())
         }
+
+        /// Remove token from the system
+        pub fn burn(origin, id: TokenId) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+
+            Self::burn_token(owner, id)?;
+
+            Ok(())
+        }
     }
 }
 

@@ -6,7 +6,7 @@ use frame_support::{assert_noop, assert_ok};
 use sp_core::U256;
 
 #[test]
-fn mint_tokens() {
+fn mint_burn_tokens() {
     new_test_ext().execute_with(|| {
         let id_a: U256 = 1.into();
         let id_b: U256 = 2.into();
@@ -40,6 +40,16 @@ fn mint_tokens() {
             Erc721::mint(Origin::ROOT, USER_A, id_b, metadata_b.clone()),
             Error::<Test>::TokenAlreadyExists
         );
+
+        assert_ok!(Erc721::burn(Origin::ROOT, id_a));
+        assert_eq!(Erc721::token_count(), 1.into());
+        assert!(!<Tokens>::contains_key(&id_a));
+        assert!(!<TokenOwner<Test>>::contains_key(&id_a));
+
+        assert_ok!(Erc721::burn(Origin::ROOT, id_b));
+        assert_eq!(Erc721::token_count(), 0.into());
+        assert!(!<Tokens>::contains_key(&id_b));
+        assert!(!<TokenOwner<Test>>::contains_key(&id_b));
     })
 }
 

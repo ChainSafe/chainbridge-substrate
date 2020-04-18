@@ -20,6 +20,8 @@ frame-support = { version = "2.0.0-alpha.3", git = "https://github.com/paritytec
 frame-system = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 
 chainbridge = { path = "../chainbridge" , default-features = false}
+example-erc721 = { path = "../example-erc721", default-features = false }
+
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
@@ -38,4 +40,5 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"chainbridge/std",
+    "example-erc721/std"
 ]

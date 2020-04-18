@@ -330,6 +330,7 @@ name = "example-pallet"
 version = "0.0.1"
 dependencies = [
  "chainbridge",
+ "example-erc721",
  "frame-support",
  "frame-system",
  "pallet-balances",

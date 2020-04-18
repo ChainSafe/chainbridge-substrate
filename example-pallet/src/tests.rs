@@ -2,8 +2,8 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Erc721, Erc721Id, Event, Example, HashId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A,
-    RELAYER_B, RELAYER_C,
+    Erc721, Erc721Id, Event, Example, HashId, NativeTokenId, Origin, Test, ENDOWED_BALANCE,
+    RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -114,12 +114,23 @@ fn transfer_erc721() {
             1,
             resource_id,
             token_id_slice.to_vec(),
-            recipient,
+            recipient.clone(),
             metadata,
         ));
 
         // Ensure token no longer exists
-        assert_eq!(Erc721::tokens(token_id), None)
+        assert_eq!(Erc721::tokens(token_id), None);
+
+        // Transfer should fail as token doesn't exist
+        assert_noop!(
+            Example::transfer_erc721(
+                Origin::signed(RELAYER_A),
+                recipient.clone(),
+                token_id,
+                dest_chain,
+            ),
+            Error::<Test>::InvalidTransfer
+        );
     })
 }
 
@@ -197,6 +208,44 @@ fn transfer() {
             RELAYER_A,
             10,
         ))]);
+    })
+}
+
+#[test]
+fn mint_erc721() {
+    new_test_ext().execute_with(|| {
+        let token_id = U256::from(99);
+        let recipient = RELAYER_A;
+        let metadata = vec![1, 1, 1, 1];
+        let bridge_id: u64 = Bridge::account_id();
+
+        // Token doesn't yet exist
+        assert_eq!(Erc721::tokens(token_id), None);
+        // Mint
+        assert_ok!(Example::mint_erc721(
+            Origin::signed(bridge_id),
+            recipient,
+            token_id,
+            metadata.clone()
+        ));
+        // Ensure token exists
+        assert_eq!(
+            Erc721::tokens(token_id).unwrap(),
+            Erc721Token {
+                id: token_id,
+                metadata: metadata.clone()
+            }
+        );
+        // Cannot mint same token
+        assert_noop!(
+            Example::mint_erc721(
+                Origin::signed(bridge_id),
+                recipient,
+                token_id,
+                metadata.clone()
+            ),
+            erc721::Error::<Test>::TokenAlreadyExists
+        );
     })
 }
 

@@ -71,6 +71,7 @@ decl_module! {
             <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, amount)
         }
 
+        /// Transfer a non-fungible token (erc721) to a (whitelisted) destination chain.
         pub fn transfer_erc721(origin, recipient: Vec<u8>, token_id: U256, dest_id: bridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -104,10 +105,11 @@ decl_module! {
             Ok(())
         }
 
+        /// Allows the bridge to issue new erc721 tokens
         pub fn mint_erc721(origin, recipient: T::AccountId, id: U256, metadata: Vec<u8>) -> DispatchResult {
-             T::BridgeOrigin::ensure_origin(origin)?;
-             <erc721::Module<T>>::mint_token(recipient, id, metadata)?;
-             Ok(())
+            T::BridgeOrigin::ensure_origin(origin)?;
+            <erc721::Module<T>>::mint_token(recipient, id, metadata)?;
+            Ok(())
         }
     }
 }

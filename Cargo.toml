@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "chainbridge",
+    "example-erc721",
     "example-pallet"
 ]

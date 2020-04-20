@@ -2,14 +2,15 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Event, Example, HashId, NativeTokenId, Origin, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
-    RELAYER_C,
+    Erc721, Erc721Id, Event, Example, HashId, NativeTokenId, Origin, Test, ENDOWED_BALANCE,
+    RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
 use frame_support::{assert_noop, assert_ok};
 
 use codec::Encode;
+use example_erc721::Erc721Token;
 use sp_core::{blake2_256, H256};
 
 const TEST_THRESHOLD: u32 = 2;
@@ -70,6 +71,66 @@ fn transfer_native() {
             amount,
             recipient,
         ));
+    })
+}
+
+#[test]
+fn transfer_erc721() {
+    new_test_ext().execute_with(|| {
+        let dest_chain = 0;
+        let resource_id = Erc721Id::get();
+        let token_id: U256 = U256::from(100);
+        let token_id_slice: &mut [u8] = &mut [0; 32];
+        token_id.to_big_endian(token_id_slice);
+        let metadata: Vec<u8> = vec![1, 2, 3, 4];
+        let recipient = vec![99];
+
+        // Create a token
+        assert_ok!(Erc721::mint(
+            Origin::ROOT,
+            RELAYER_A,
+            token_id,
+            metadata.clone()
+        ));
+        assert_eq!(
+            Erc721::tokens(token_id).unwrap(),
+            Erc721Token {
+                id: token_id,
+                metadata: metadata.clone()
+            }
+        );
+
+        // Whitelist destination and transfer
+        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Example::transfer_erc721(
+            Origin::signed(RELAYER_A),
+            recipient.clone(),
+            token_id,
+            dest_chain,
+        ));
+
+        expect_event(bridge::RawEvent::NonFungibleTransfer(
+            dest_chain,
+            1,
+            resource_id,
+            token_id_slice.to_vec(),
+            recipient.clone(),
+            metadata,
+        ));
+
+        // Ensure token no longer exists
+        assert_eq!(Erc721::tokens(token_id), None);
+
+        // Transfer should fail as token doesn't exist
+        assert_noop!(
+            Example::transfer_erc721(
+                Origin::signed(RELAYER_A),
+                recipient.clone(),
+                token_id,
+                dest_chain,
+            ),
+            Error::<Test>::InvalidTransfer
+        );
     })
 }
 
@@ -147,6 +208,44 @@ fn transfer() {
             RELAYER_A,
             10,
         ))]);
+    })
+}
+
+#[test]
+fn mint_erc721() {
+    new_test_ext().execute_with(|| {
+        let token_id = U256::from(99);
+        let recipient = RELAYER_A;
+        let metadata = vec![1, 1, 1, 1];
+        let bridge_id: u64 = Bridge::account_id();
+
+        // Token doesn't yet exist
+        assert_eq!(Erc721::tokens(token_id), None);
+        // Mint
+        assert_ok!(Example::mint_erc721(
+            Origin::signed(bridge_id),
+            recipient,
+            token_id,
+            metadata.clone()
+        ));
+        // Ensure token exists
+        assert_eq!(
+            Erc721::tokens(token_id).unwrap(),
+            Erc721Token {
+                id: token_id,
+                metadata: metadata.clone()
+            }
+        );
+        // Cannot mint same token
+        assert_noop!(
+            Example::mint_erc721(
+                Origin::signed(bridge_id),
+                recipient,
+                token_id,
+                metadata.clone()
+            ),
+            erc721::Error::<Test>::TokenAlreadyExists
+        );
     })
 }
 

@@ -1,5 +1,5 @@
 [package]
-name = 'example-pallet'
+name = 'example-erc721'
 version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'
@@ -19,9 +19,7 @@ sp-core = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/subs
 frame-support = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 frame-system = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 
-chainbridge = { path = "../chainbridge" , default-features = false}
-example-erc721 = { path = "../example-erc721", default-features = false }
-
+chainbridge = { path = "../chainbridge" , default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
@@ -39,6 +37,5 @@ std = [
     "sp-core/std",
 	"frame-support/std",
 	"frame-system/std",
-	"chainbridge/std",
-    "example-erc721/std"
+	"chainbridge/std"
 ]

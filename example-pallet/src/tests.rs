@@ -19,8 +19,8 @@ fn make_remark_proposal(hash: H256) -> Call {
     Call::Example(crate::Call::remark(hash))
 }
 
-fn make_transfer_proposal(to: u64, amount: u32) -> Call {
-    Call::Example(crate::Call::transfer(to, amount))
+fn make_transfer_proposal(to: u64, amount: u64) -> Call {
+    Call::Example(crate::Call::transfer(to, amount.into()))
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn transfer_native() {
     new_test_ext().execute_with(|| {
         let dest_chain = 0;
         let resource_id = NativeTokenId::get();
-        let amount: u32 = 100;
+        let amount: u64 = 100;
         let recipient = vec![99];
 
         assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
@@ -68,7 +68,7 @@ fn transfer_native() {
             dest_chain,
             1,
             resource_id,
-            amount,
+            amount.into(),
             recipient,
         ));
     })

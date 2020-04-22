@@ -91,7 +91,7 @@ fn asset_transfer_success() {
             dest_id.clone(),
             resource_id.clone(),
             to.clone(),
-            amount
+            amount.into()
         ));
         assert_events(vec![
             Event::bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
@@ -99,7 +99,7 @@ fn asset_transfer_success() {
                 dest_id.clone(),
                 1,
                 resource_id.clone(),
-                amount,
+                amount.into(),
                 to.clone(),
             )),
         ]);
@@ -147,7 +147,7 @@ fn asset_transfer_invalid_chain() {
         ))]);
 
         assert_noop!(
-            Bridge::transfer_fungible(bad_dest_id, resource_id.clone(), vec![], 0,),
+            Bridge::transfer_fungible(bad_dest_id, resource_id.clone(), vec![], U256::zero()),
             Error::<Test>::ChainNotWhitelisted
         );
 

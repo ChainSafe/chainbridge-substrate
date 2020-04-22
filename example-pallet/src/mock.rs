@@ -67,8 +67,6 @@ parameter_types! {
 
 impl bridge::Trait for Test {
     type Event = Event;
-    type Currency = Balances;
-    // type ValidatorOrigin = EnsureSignedBy<One, u64>;
     type Proposal = Call;
     type ChainId = TestChainId;
 }
@@ -87,6 +85,7 @@ impl erc721::Trait for Test {
 impl Trait for Test {
     type Event = Event;
     type BridgeOrigin = bridge::EnsureBridge<Test>;
+    type Currency = Balances;
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
     type Erc721Id = Erc721Id;

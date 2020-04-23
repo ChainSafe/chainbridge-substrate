@@ -65,8 +65,6 @@ parameter_types! {
 
 impl Trait for Test {
     type Event = Event;
-    type Currency = Balances;
-    // type ValidatorOrigin = EnsureSignedBy<One, u64>;
     type Proposal = Call;
     type ChainId = TestChainId;
 }

@@ -19,6 +19,7 @@ sp-core = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/subs
 frame-support = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 frame-system = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 
+[dev-dependencies]
 pallet-balances = { version = "2.0.0-alpha.3", git = "https://github.com/paritytech/substrate.git", rev = "013c1ee167354a08283fb69915fda56a62fee943", default-features = false }
 
 [build-dependencies]

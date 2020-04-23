@@ -5,13 +5,13 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::Currency,
     traits::Get,
     weights::{FunctionOf, GetDispatchInfo, SimpleDispatchInfo},
     Parameter,
 };
 
 use frame_system::{self as system, ensure_root, ensure_signed};
+use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
@@ -87,8 +87,6 @@ impl<AccountId> Default for ProposalVotes<AccountId> {
 
 pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-    /// The currency mechanism.
-    type Currency: Currency<Self::AccountId>;
     /// Proposed dispatchable call
     type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
     /// The identifier for this chain.
@@ -107,7 +105,7 @@ decl_event! {
         /// Relayer removed from set
         RelayerRemoved(AccountId),
         /// FunglibleTransfer is for relaying fungibles (dest_id, nonce, resource_id, amount, recipient, metadata)
-        FungibleTransfer(ChainId, DepositNonce, ResourceId, u32, Vec<u8>),
+        FungibleTransfer(ChainId, DepositNonce, ResourceId, U256, Vec<u8>),
         /// NonFungibleTransfer is for relaying NFTS (dest_id, nonce, resource_id, token_id, recipient, metadata)
         NonFungibleTransfer(ChainId, DepositNonce, ResourceId, Vec<u8>, Vec<u8>, Vec<u8>),
         /// GenericTransfer is for a generic data payload (dest_id, nonce, resource_id, metadata)
@@ -447,7 +445,7 @@ impl<T: Trait> Module<T> {
         dest_id: ChainId,
         resource_id: ResourceId,
         to: Vec<u8>,
-        amount: u32,
+        amount: U256,
     ) -> DispatchResult {
         ensure!(
             Self::chain_whitelisted(dest_id),

@@ -201,11 +201,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             ensure_root(origin)?;
-
-            ensure!(threshold > 0, Error::<T>::InvalidThreshold);
-            RelayerThreshold::put(threshold);
-            Self::deposit_event(RawEvent::RelayerThresholdChanged(threshold));
-            Ok(())
+            Self::set_relayer_threshold(threshold)
         }
 
         /// Stores a method name on chain under an associated resource ID.
@@ -216,8 +212,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
-            <Resources>::insert(id, method);
-            Ok(())
+            Self::register_resource(id, method)
         }
 
         /// Removes a resource ID from the resource mapping.
@@ -231,8 +226,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
             ensure_root(origin)?;
-            <Resources>::remove(id);
-            Ok(())
+            Self::unregister_resource(id)
         }
 
         /// Enables a chain ID as a source or destination for a bridge transfer.
@@ -243,15 +237,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
             ensure_root(origin)?;
-
-            // Cannot whitelist this chain
-            ensure!(id != T::ChainId::get(), Error::<T>::InvalidChainId);
-            // Cannot whitelist with an existing entry
-            ensure!(!Self::chain_whitelisted(id), Error::<T>::ChainAlreadyWhitelisted);
-
-            ChainNonces::insert(&id, 0);
-            Self::deposit_event(RawEvent::ChainWhitelisted(id));
-            Ok(())
+            Self::whitelist(id)
         }
 
         /// Adds a new relayer to the relayer set.
@@ -262,13 +248,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
-
-            ensure!(!Self::is_relayer(&v), Error::<T>::RelayerAlreadyExists);
-            <Relayers<T>>::insert(&v, true);
-            <RelayerCount>::mutate(|i| *i += 1);
-
-            Self::deposit_event(RawEvent::RelayerAdded(v));
-            Ok(())
+            Self::register_relayer(v)
         }
 
         /// Removes an existing relayer from the set.
@@ -279,12 +259,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
-
-            ensure!(Self::is_relayer(&v), Error::<T>::RelayerInvalid);
-            <Relayers<T>>::remove(&v);
-            <RelayerCount>::mutate(|i| *i -= 1);
-            Self::deposit_event(RawEvent::RelayerRemoved(v));
-            Ok(())
+            Self::unregister_relayer(v)
         }
 
         /// Commits a vote in favour of the provided proposal.
@@ -329,6 +304,8 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    // *** Utility methods ***
+
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {
         Self::relayers(who)
@@ -340,20 +317,82 @@ impl<T: Trait> Module<T> {
         MODULE_ID.into_account()
     }
 
+    /// Asserts if a resource is registered
+    pub fn resource_exists(id: ResourceId) -> bool {
+        return Self::resources(id) != None;
+    }
+
     /// Checks if a chain exists as a whitelisted destination
     pub fn chain_whitelisted(id: ChainId) -> bool {
         return Self::chains(id) != None;
     }
 
-    pub fn resource_exists(id: ResourceId) -> bool {
-        return Self::resources(id) != None;
-    }
-
+    /// Increments the deposit nonce for the specified chain ID
     fn bump_nonce(id: ChainId) -> DepositNonce {
         let nonce = Self::chains(id).unwrap_or_default() + 1;
         <ChainNonces>::insert(id, nonce);
         nonce
     }
+
+    // *** Admin methods ***
+
+    /// Set a new voting threshold
+    pub fn set_relayer_threshold(threshold: u32) -> DispatchResult {
+        ensure!(threshold > 0, Error::<T>::InvalidThreshold);
+        <RelayerThreshold>::put(threshold);
+        Self::deposit_event(RawEvent::RelayerThresholdChanged(threshold));
+        Ok(())
+    }
+
+    /// Register a method for a resource Id, enabling associated transfers
+    pub fn register_resource(id: ResourceId, method: Vec<u8>) -> DispatchResult {
+        <Resources>::insert(id, method);
+        Ok(())
+    }
+
+    /// Removes a resource ID, disabling associated transfer
+    pub fn unregister_resource(id: ResourceId) -> DispatchResult {
+        <Resources>::remove(id);
+        Ok(())
+    }
+
+    /// Whitelist a chain ID for transfer
+    pub fn whitelist(id: ChainId) -> DispatchResult {
+        // Cannot whitelist this chain
+        ensure!(id != T::ChainId::get(), Error::<T>::InvalidChainId);
+        // Cannot whitelist with an existing entry
+        ensure!(
+            !Self::chain_whitelisted(id),
+            Error::<T>::ChainAlreadyWhitelisted
+        );
+        <ChainNonces>::insert(&id, 0);
+        Self::deposit_event(RawEvent::ChainWhitelisted(id));
+        Ok(())
+    }
+
+    /// Adds a new relayer to the set
+    pub fn register_relayer(relayer: T::AccountId) -> DispatchResult {
+        ensure!(
+            !Self::is_relayer(&relayer),
+            Error::<T>::RelayerAlreadyExists
+        );
+        <Relayers<T>>::insert(&relayer, true);
+        <RelayerCount>::mutate(|i| *i += 1);
+
+        Self::deposit_event(RawEvent::RelayerAdded(relayer));
+        Ok(())
+    }
+
+    /// Removes a relayer from the set
+    pub fn unregister_relayer(relayer: T::AccountId) -> DispatchResult {
+        ensure!(Self::is_relayer(&relayer), Error::<T>::RelayerInvalid);
+        <Relayers<T>>::remove(&relayer);
+        <RelayerCount>::mutate(|i| *i -= 1);
+        Self::deposit_event(RawEvent::RelayerRemoved(relayer));
+        Ok(())
+    }
+
+    // *** Proposal voting and execution methods ***
 
     /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
     fn vote_for(

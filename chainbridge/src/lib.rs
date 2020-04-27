@@ -10,7 +10,7 @@ use frame_support::{
     Parameter,
 };
 
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
 use sp_runtime::{ModuleId, RuntimeDebug};
@@ -202,7 +202,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::set_relayer_threshold(threshold)
         }
 
@@ -213,7 +213,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::register_resource(id, method)
         }
 
@@ -227,7 +227,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::unregister_resource(id)
         }
 
@@ -238,7 +238,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::whitelist(id)
         }
 
@@ -249,7 +249,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::register_relayer(v)
         }
 
@@ -260,7 +260,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
+            Self::ensure_admin(origin)?;
             Self::unregister_relayer(v)
         }
 
@@ -307,6 +307,13 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     // *** Utility methods ***
+
+    pub fn ensure_admin(o: T::Origin) -> DispatchResult {
+        T::AdminOrigin::try_origin(o)
+            .map(|_| ())
+            .or_else(ensure_root)?;
+        Ok(())
+    }
 
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {

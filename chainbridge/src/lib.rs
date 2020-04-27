@@ -10,7 +10,7 @@ use frame_support::{
     Parameter,
 };
 
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{self as system, ensure_signed};
 use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
 use sp_runtime::{ModuleId, RuntimeDebug};
@@ -87,6 +87,8 @@ impl<AccountId> Default for ProposalVotes<AccountId> {
 
 pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    /// Origin used to administer the pallet
+    type AdminOrigin: EnsureOrigin<Self::Origin>;
     /// Proposed dispatchable call
     type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
     /// The identifier for this chain.
@@ -200,7 +202,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
 
             ensure!(threshold > 0, Error::<T>::InvalidThreshold);
             RelayerThreshold::put(threshold);
@@ -215,7 +217,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
             <Resources>::insert(id, method);
             Ok(())
         }
@@ -230,7 +232,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
             <Resources>::remove(id);
             Ok(())
         }
@@ -242,7 +244,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
 
             // Cannot whitelist this chain
             ensure!(id != T::ChainId::get(), Error::<T>::InvalidChainId);
@@ -261,7 +263,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
 
             ensure!(!Self::is_relayer(&v), Error::<T>::RelayerAlreadyExists);
             <Relayers<T>>::insert(&v, true);
@@ -278,7 +280,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
+            T::AdminOrigin::ensure_origin(origin)?;
 
             ensure!(Self::is_relayer(&v), Error::<T>::RelayerInvalid);
             <Relayers<T>>::remove(&v);

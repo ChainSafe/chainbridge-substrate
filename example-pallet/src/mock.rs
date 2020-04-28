@@ -67,6 +67,7 @@ parameter_types! {
 
 impl bridge::Trait for Test {
     type Event = Event;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
     type ChainId = TestChainId;
 }

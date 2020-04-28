@@ -65,6 +65,7 @@ parameter_types! {
 
 impl Trait for Test {
     type Event = Event;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
     type ChainId = TestChainId;
 }

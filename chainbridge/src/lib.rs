@@ -288,13 +288,11 @@ decl_module! {
 
         /// Commits a vote against a provided proposal.
         ///
-        /// This is not yet fully implemented.
-        ///
         /// # <weight>
         /// - Fixed, since execution of proposal should not be included
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn reject(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
+        pub fn reject_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
@@ -474,16 +472,13 @@ impl<T: Trait> Module<T> {
         call: Box<T::Proposal>,
     ) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalApproved(src_id, nonce));
-        match call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into()) {
-            Ok(_) => Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce)),
-            Err(_) => Self::deposit_event(RawEvent::ProposalFailed(src_id, nonce)),
-        }
+        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())?;
+        Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce));
         Ok(())
     }
 
-    /// Cancels a proposal (not yet implemented)
+    /// Cancels a proposal.
     fn cancel_execution(src_id: ChainId, nonce: DepositNonce) -> DispatchResult {
-        // TODO: Incomplete
         Self::deposit_event(RawEvent::ProposalRejected(src_id, nonce));
         Ok(())
     }

@@ -228,7 +228,7 @@ fn create_sucessful_proposal() {
         assert_eq!(prop, expected);
 
         // Second relayer votes against
-        assert_ok!(Bridge::reject(
+        assert_ok!(Bridge::reject_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
             src_id,
@@ -295,7 +295,7 @@ fn create_unsucessful_proposal() {
         assert_eq!(prop, expected);
 
         // Second relayer votes against
-        assert_ok!(Bridge::reject(
+        assert_ok!(Bridge::reject_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
             src_id,
@@ -311,7 +311,7 @@ fn create_unsucessful_proposal() {
         assert_eq!(prop, expected);
 
         // Third relayer votes against
-        assert_ok!(Bridge::reject(
+        assert_ok!(Bridge::reject_proposal(
             Origin::signed(RELAYER_C),
             prop_id,
             src_id,

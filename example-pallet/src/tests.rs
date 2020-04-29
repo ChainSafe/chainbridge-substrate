@@ -282,7 +282,7 @@ fn create_sucessful_transfer_proposal() {
         assert_eq!(prop, expected);
 
         // Second relayer votes against
-        assert_ok!(Bridge::reject(
+        assert_ok!(Bridge::reject_proposal(
             Origin::signed(RELAYER_B),
             prop_id,
             src_id,

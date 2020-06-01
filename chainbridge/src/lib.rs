@@ -57,15 +57,15 @@ pub struct ProposalVotes<AccountId> {
 impl<T> ProposalVotes<T> {
     /// Attempts to mark the proposal as approve or rejected.
     /// Returns true if the status changes from active.
-    fn try_to_complete(&mut self, threshold: u32, total: u32) -> bool {
+    fn try_to_complete(&mut self, threshold: u32, total: u32) -> ProposalStatus {
         if self.votes_for.len() >= threshold as usize {
             self.status = ProposalStatus::Approved;
-            true
+            ProposalStatus::Approved
         } else if self.votes_against.len() > (total - threshold) as usize {
             self.status = ProposalStatus::Rejected;
-            true
+            ProposalStatus::Rejected
         } else {
-            false
+            ProposalStatus::Active
         }
     }
 
@@ -418,14 +418,14 @@ impl<T: Trait> Module<T> {
             // Vote and store
             votes.votes_for.push(who.clone());
             // Check if finalization is possible
-            let complete = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
+            let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
             Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
 
-            if complete {
-                Self::finalize_execution(src_id, nonce, prop)
-            } else {
-                Ok(())
+            match status {
+                ProposalStatus::Approved => Self::finalize_execution(src_id, nonce, prop),
+                ProposalStatus::Rejected => Self::cancel_execution(src_id, nonce),
+                _ => Ok(()),
             }
         } else {
             Err(Error::<T>::RelayerAlreadyVoted)?
@@ -451,14 +451,14 @@ impl<T: Trait> Module<T> {
             votes.votes_against.push(who.clone());
 
             // Check if cancellation is possible
-            let complete = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
+            let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
             Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
 
-            if complete {
-                Self::cancel_execution(src_id, nonce)
-            } else {
-                Ok(())
+            match status {
+                ProposalStatus::Approved => Self::finalize_execution(src_id, nonce, prop),
+                ProposalStatus::Rejected => Self::cancel_execution(src_id, nonce),
+                _ => Ok(()),
             }
         } else {
             Err(Error::<T>::RelayerAlreadyVoted)?

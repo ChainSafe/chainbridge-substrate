@@ -2,8 +2,8 @@
 
 use super::mock::{
     assert_events, balances, event_exists, expect_event, new_test_ext, Balances, Bridge, Call,
-    Erc721, Erc721Id, Event, Example, HashId, NativeTokenId, Origin, Test, ENDOWED_BALANCE,
-    RELAYER_A, RELAYER_B, RELAYER_C,
+    Erc721, Erc721Id, Event, Example, HashId, NativeTokenId, Origin, ProposalLifetime, Test,
+    ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
 use frame_support::dispatch::DispatchError;
@@ -277,7 +277,8 @@ fn create_sucessful_transfer_proposal() {
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
-            status: bridge::ProposalStatus::Active,
+            status: bridge::ProposalStatus::Initiated,
+            expiry: ProposalLifetime::get(),
         };
         assert_eq!(prop, expected);
 
@@ -293,7 +294,8 @@ fn create_sucessful_transfer_proposal() {
         let expected = bridge::ProposalVotes {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
-            status: bridge::ProposalStatus::Active,
+            status: bridge::ProposalStatus::Initiated,
+            expiry: ProposalLifetime::get(),
         };
         assert_eq!(prop, expected);
 
@@ -310,6 +312,7 @@ fn create_sucessful_transfer_proposal() {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
             status: bridge::ProposalStatus::Approved,
+            expiry: ProposalLifetime::get(),
         };
         assert_eq!(prop, expected);
 

@@ -63,6 +63,7 @@ impl pallet_balances::Trait for Test {
 
 parameter_types! {
     pub const TestChainId: u8 = 5;
+    pub const ProposalLifetime: u64 = 100;
 }
 
 impl bridge::Trait for Test {
@@ -70,6 +71,7 @@ impl bridge::Trait for Test {
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
     type ChainId = TestChainId;
+    type ProposalLifetime = ProposalLifetime;
 }
 
 parameter_types! {

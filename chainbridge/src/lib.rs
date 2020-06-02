@@ -482,7 +482,9 @@ impl<T: Trait> Module<T> {
         prop: Box<T::Proposal>,
     ) -> DispatchResult {
         if let Some(mut votes) = <Votes<T>>::get(src_id, (nonce, prop.clone())) {
+            let now = <frame_system::Module<T>>::block_number();
             ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
+            ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
 
             let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());

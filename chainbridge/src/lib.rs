@@ -306,6 +306,25 @@ decl_module! {
 
             Self::vote_against(who, nonce, src_id, call)
         }
+
+        /// Evaluate the state of a proposal given the current vote threshold.
+        ///
+        /// A proposal with enough votes will be either executed or cancelled, and the status
+        /// will be updated accordingly.
+        ///
+        /// # <weight>
+        /// - weight of proposed call, regardless of whether execution is performed
+        /// # </weight>
+        #[weight = FunctionOf(
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight + 500_000,
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
+            true
+        )]
+        pub fn eval_vote_state(origin, nonce: DepositNonce, src_id: ChainId, prop: Box<<T as Trait>::Proposal>) -> DispatchResult {
+            ensure_signed(origin)?;
+
+            Self::try_resolve_proposal(nonce, src_id, prop)
+        }
     }
 }
 

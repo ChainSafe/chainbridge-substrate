@@ -54,7 +54,7 @@ pub struct ProposalVotes<AccountId> {
     pub status: ProposalStatus,
 }
 
-impl<T> ProposalVotes<T> {
+impl<T: PartialEq> ProposalVotes<T> {
     /// Attempts to mark the proposal as approve or rejected.
     /// Returns true if the status changes from active.
     fn try_to_complete(&mut self, threshold: u32, total: u32) -> ProposalStatus {
@@ -72,6 +72,10 @@ impl<T> ProposalVotes<T> {
     /// Returns true if the proposal has been rejected or approved, otherwise false.
     fn is_complete(&self) -> bool {
         self.status != ProposalStatus::Active
+    }
+
+    fn has_voted(&self, who: &T) -> bool {
+        self.votes_for.contains(&who) || self.votes_against.contains(&who)
     }
 }
 
@@ -153,6 +157,8 @@ decl_error! {
         ProposalAlreadyExists,
         /// No proposal with the ID was found
         ProposalDoesNotExist,
+        /// Cannot complete proposal, needs more votes
+        ProposalNotComplete,
         /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
     }
@@ -300,6 +306,25 @@ decl_module! {
 
             Self::vote_against(who, nonce, src_id, call)
         }
+
+        /// Evaluate the state of a proposal given the current vote threshold.
+        ///
+        /// A proposal with enough votes will be either executed or cancelled, and the status
+        /// will be updated accordingly.
+        ///
+        /// # <weight>
+        /// - weight of proposed call, regardless of whether execution is performed
+        /// # </weight>
+        #[weight = FunctionOf(
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight + 500_000,
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
+            true
+        )]
+        pub fn eval_vote_state(origin, nonce: DepositNonce, src_id: ChainId, prop: Box<<T as Trait>::Proposal>) -> DispatchResult {
+            ensure_signed(origin)?;
+
+            Self::try_resolve_proposal(nonce, src_id, prop)
+        }
     }
 }
 
@@ -401,26 +426,44 @@ impl<T: Trait> Module<T> {
 
     // *** Proposal voting and execution methods ***
 
-    /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
-    fn vote_for(
+    /// Commits a vote for a proposal. If the proposal doesn't exist it will be created.
+    fn commit_vote(
         who: T::AccountId,
         nonce: DepositNonce,
         src_id: ChainId,
         prop: Box<T::Proposal>,
+        in_favour: bool,
     ) -> DispatchResult {
         // Use default in the case it doesn't already exist
         let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
-
-        // Ensure the proposal isn't complete already
+        // Ensure the proposal isn't complete and relayer hasn't already voted
         ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
+        ensure!(!votes.has_voted(&who), Error::<T>::RelayerAlreadyVoted);
 
-        if !votes.votes_for.contains(&who) {
-            // Vote and store
+        if in_favour {
             votes.votes_for.push(who.clone());
-            // Check if finalization is possible
+            Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
+        } else {
+            votes.votes_against.push(who.clone());
+            Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
+        }
+
+        <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
+
+        Ok(())
+    }
+
+    /// Attempts to finalize or cancel the proposal if the vote count allows.
+    fn try_resolve_proposal(
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
+        if let Some(mut votes) = <Votes<T>>::get(src_id, (nonce, prop.clone())) {
+            ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
+
             let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
-            Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
 
             match status {
                 ProposalStatus::Approved => Self::finalize_execution(src_id, nonce, prop),
@@ -428,8 +471,19 @@ impl<T: Trait> Module<T> {
                 _ => Ok(()),
             }
         } else {
-            Err(Error::<T>::RelayerAlreadyVoted)?
+            Err(Error::<T>::ProposalDoesNotExist)?
         }
+    }
+
+    /// Commits a vote in favour of the proposal and executes it if the vote threshold is met.
+    fn vote_for(
+        who: T::AccountId,
+        nonce: DepositNonce,
+        src_id: ChainId,
+        prop: Box<T::Proposal>,
+    ) -> DispatchResult {
+        Self::commit_vote(who, nonce, src_id, prop.clone(), true)?;
+        Self::try_resolve_proposal(nonce, src_id, prop)
     }
 
     /// Commits a vote against the proposal and cancels it if more than (relayers.len() - threshold)
@@ -440,29 +494,8 @@ impl<T: Trait> Module<T> {
         src_id: ChainId,
         prop: Box<T::Proposal>,
     ) -> DispatchResult {
-        // Use default in the case it doesn't already exist
-        let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
-
-        // Ensure the proposal isn't complete already
-        ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
-
-        if !votes.votes_against.contains(&who) {
-            // Vote and store
-            votes.votes_against.push(who.clone());
-
-            // Check if cancellation is possible
-            let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
-            <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
-            Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
-
-            match status {
-                ProposalStatus::Approved => Self::finalize_execution(src_id, nonce, prop),
-                ProposalStatus::Rejected => Self::cancel_execution(src_id, nonce),
-                _ => Ok(()),
-            }
-        } else {
-            Err(Error::<T>::RelayerAlreadyVoted)?
-        }
+        Self::commit_vote(who, nonce, src_id, prop.clone(), false)?;
+        Self::try_resolve_proposal(nonce, src_id, prop)
     }
 
     /// Execute the proposal and signals the result as an event

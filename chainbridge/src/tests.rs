@@ -24,6 +24,51 @@ fn derive_ids() {
 }
 
 #[test]
+fn complete_proposal_approved() {
+    let mut prop = ProposalVotes {
+        votes_for: vec![1, 2],
+        votes_against: vec![3],
+        status: ProposalStatus::Active,
+    };
+
+    prop.try_to_complete(2, 3);
+    assert_eq!(prop.status, ProposalStatus::Approved);
+}
+
+#[test]
+fn complete_proposal_rejected() {
+    let mut prop = ProposalVotes {
+        votes_for: vec![1],
+        votes_against: vec![2, 3],
+        status: ProposalStatus::Active,
+    };
+
+    prop.try_to_complete(2, 3);
+    assert_eq!(prop.status, ProposalStatus::Rejected);
+}
+
+#[test]
+fn complete_proposal_bad_threshold() {
+    let mut prop = ProposalVotes {
+        votes_for: vec![1, 2],
+        votes_against: vec![],
+        status: ProposalStatus::Active,
+    };
+
+    prop.try_to_complete(3, 2);
+    assert_eq!(prop.status, ProposalStatus::Active);
+
+    let mut prop = ProposalVotes {
+        votes_for: vec![],
+        votes_against: vec![1, 2],
+        status: ProposalStatus::Active,
+    };
+
+    prop.try_to_complete(3, 2);
+    assert_eq!(prop.status, ProposalStatus::Active);
+}
+
+#[test]
 fn setup_resources() {
     new_test_ext().execute_with(|| {
         let id: ResourceId = [1; 32];

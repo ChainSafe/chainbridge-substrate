@@ -61,7 +61,7 @@ impl<T: PartialEq> ProposalVotes<T> {
         if self.votes_for.len() >= threshold as usize {
             self.status = ProposalStatus::Approved;
             ProposalStatus::Approved
-        } else if self.votes_against.len() > (total - threshold) as usize {
+        } else if total >= threshold && self.votes_against.len() as u32 + threshold > total {
             self.status = ProposalStatus::Rejected;
             ProposalStatus::Rejected
         } else {

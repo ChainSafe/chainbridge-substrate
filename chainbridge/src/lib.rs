@@ -80,7 +80,7 @@ impl<A: PartialEq, B: PartialOrd + Default> ProposalVotes<A, B> {
         self.votes_for.contains(&who) || self.votes_against.contains(&who)
     }
 
-    /// Return true if the expiry time has not been reached yet
+    /// Return true if the expiry time has been reached
     fn is_expired(&self, now: B) -> bool {
         self.expiry <= now
     }

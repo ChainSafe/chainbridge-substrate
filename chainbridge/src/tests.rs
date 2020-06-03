@@ -28,7 +28,8 @@ fn complete_proposal_approved() {
     let mut prop = ProposalVotes {
         votes_for: vec![1, 2],
         votes_against: vec![3],
-        status: ProposalStatus::Active,
+        status: ProposalStatus::Initiated,
+        expiry: ProposalLifetime::get(),
     };
 
     prop.try_to_complete(2, 3);
@@ -40,7 +41,8 @@ fn complete_proposal_rejected() {
     let mut prop = ProposalVotes {
         votes_for: vec![1],
         votes_against: vec![2, 3],
-        status: ProposalStatus::Active,
+        status: ProposalStatus::Initiated,
+        expiry: ProposalLifetime::get(),
     };
 
     prop.try_to_complete(2, 3);
@@ -52,20 +54,22 @@ fn complete_proposal_bad_threshold() {
     let mut prop = ProposalVotes {
         votes_for: vec![1, 2],
         votes_against: vec![],
-        status: ProposalStatus::Active,
+        status: ProposalStatus::Initiated,
+        expiry: ProposalLifetime::get(),
     };
 
     prop.try_to_complete(3, 2);
-    assert_eq!(prop.status, ProposalStatus::Active);
+    assert_eq!(prop.status, ProposalStatus::Initiated);
 
     let mut prop = ProposalVotes {
         votes_for: vec![],
         votes_against: vec![1, 2],
-        status: ProposalStatus::Active,
+        status: ProposalStatus::Initiated,
+        expiry: ProposalLifetime::get(),
     };
 
     prop.try_to_complete(3, 2);
-    assert_eq!(prop.status, ProposalStatus::Active);
+    assert_eq!(prop.status, ProposalStatus::Initiated);
 }
 
 #[test]

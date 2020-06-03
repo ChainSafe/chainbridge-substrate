@@ -61,6 +61,7 @@ impl pallet_balances::Trait for Test {
 
 parameter_types! {
     pub const TestChainId: u8 = 5;
+    pub const ProposalLifetime: u64 = 50;
 }
 
 impl Trait for Test {
@@ -68,6 +69,7 @@ impl Trait for Test {
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
     type ChainId = TestChainId;
+    type ProposalLifetime = ProposalLifetime;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;

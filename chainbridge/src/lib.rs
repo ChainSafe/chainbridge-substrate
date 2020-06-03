@@ -42,19 +42,20 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
 pub enum ProposalStatus {
-    Active,
+    Initiated,
     Approved,
     Rejected,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct ProposalVotes<AccountId> {
+pub struct ProposalVotes<AccountId, BlockNumber> {
     pub votes_for: Vec<AccountId>,
     pub votes_against: Vec<AccountId>,
     pub status: ProposalStatus,
+    pub expiry: BlockNumber,
 }
 
-impl<T: PartialEq> ProposalVotes<T> {
+impl<A: PartialEq, B: PartialOrd + Default> ProposalVotes<A, B> {
     /// Attempts to mark the proposal as approve or rejected.
     /// Returns true if the status changes from active.
     fn try_to_complete(&mut self, threshold: u32, total: u32) -> ProposalStatus {
@@ -65,26 +66,33 @@ impl<T: PartialEq> ProposalVotes<T> {
             self.status = ProposalStatus::Rejected;
             ProposalStatus::Rejected
         } else {
-            ProposalStatus::Active
+            ProposalStatus::Initiated
         }
     }
 
     /// Returns true if the proposal has been rejected or approved, otherwise false.
     fn is_complete(&self) -> bool {
-        self.status != ProposalStatus::Active
+        self.status != ProposalStatus::Initiated
     }
 
-    fn has_voted(&self, who: &T) -> bool {
+    /// Returns true if `who` has voted for or against the proposal
+    fn has_voted(&self, who: &A) -> bool {
         self.votes_for.contains(&who) || self.votes_against.contains(&who)
+    }
+
+    /// Return true if the expiry time has been reached
+    fn is_expired(&self, now: B) -> bool {
+        self.expiry <= now
     }
 }
 
-impl<AccountId> Default for ProposalVotes<AccountId> {
+impl<AccountId, BlockNumber: Default> Default for ProposalVotes<AccountId, BlockNumber> {
     fn default() -> Self {
         Self {
             votes_for: vec![],
             votes_against: vec![],
-            status: ProposalStatus::Active,
+            status: ProposalStatus::Initiated,
+            expiry: BlockNumber::default(),
         }
     }
 }
@@ -98,6 +106,8 @@ pub trait Trait: system::Trait {
     /// The identifier for this chain.
     /// This must be unique and must not collide with existing IDs within a set of bridged chains.
     type ChainId: Get<ChainId>;
+
+    type ProposalLifetime: Get<Self::BlockNumber>;
 }
 
 decl_event! {
@@ -161,6 +171,8 @@ decl_error! {
         ProposalNotComplete,
         /// Proposal has either failed or succeeded
         ProposalAlreadyComplete,
+        /// Lifetime of proposal has been exceeded
+        ProposalExpired,
     }
 }
 
@@ -182,7 +194,7 @@ decl_storage! {
         /// The key is the hash of the call and the deposit ID, to ensure it's unique.
         pub Votes get(fn votes):
             double_map hasher(blake2_256) ChainId, hasher(blake2_256) (DepositNonce, T::Proposal)
-            => Option<ProposalVotes<T::AccountId>>;
+            => Option<ProposalVotes<T::AccountId, T::BlockNumber>>;
 
         /// Utilized by the bridge software to map resource IDs to actual methods
         pub Resources get(fn resources):
@@ -195,6 +207,7 @@ decl_module! {
         type Error = Error<T>;
 
         const ChainIdentity: ChainId = T::ChainId::get();
+        const ProposalLifetime: T::BlockNumber = T::ProposalLifetime::get();
 
         fn deposit_event() = default;
 
@@ -434,10 +447,19 @@ impl<T: Trait> Module<T> {
         prop: Box<T::Proposal>,
         in_favour: bool,
     ) -> DispatchResult {
-        // Use default in the case it doesn't already exist
-        let mut votes = <Votes<T>>::get(src_id, (nonce, prop.clone())).unwrap_or_default();
+        let now = <frame_system::Module<T>>::block_number();
+        let mut votes = match <Votes<T>>::get(src_id, (nonce, prop.clone())) {
+            Some(v) => v,
+            None => {
+                let mut v = ProposalVotes::default();
+                v.expiry = now + T::ProposalLifetime::get();
+                v
+            }
+        };
+
         // Ensure the proposal isn't complete and relayer hasn't already voted
         ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
+        ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
         ensure!(!votes.has_voted(&who), Error::<T>::RelayerAlreadyVoted);
 
         if in_favour {
@@ -460,7 +482,9 @@ impl<T: Trait> Module<T> {
         prop: Box<T::Proposal>,
     ) -> DispatchResult {
         if let Some(mut votes) = <Votes<T>>::get(src_id, (nonce, prop.clone())) {
+            let now = <frame_system::Module<T>>::block_number();
             ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
+            ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
 
             let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());

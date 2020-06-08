@@ -179,13 +179,13 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as Bridge {
         /// All whitelisted chains and their respective transaction counts
-        ChainNonces get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
+        ChainNonces get(fn chains): map hasher(opaque_blake2_256) ChainId => Option<DepositNonce>;
 
         /// Number of votes required for a proposal to execute
         RelayerThreshold get(fn relayer_threshold): u32 = DEFAULT_RELAYER_THRESHOLD;
 
         /// Tracks current relayer set
-        pub Relayers get(fn relayers): map hasher(blake2_256) T::AccountId => bool;
+        pub Relayers get(fn relayers): map hasher(opaque_blake2_256) T::AccountId => bool;
 
         /// Number of relayers in set
         pub RelayerCount get(fn relayer_count): u32;
@@ -193,12 +193,12 @@ decl_storage! {
         /// All known proposals.
         /// The key is the hash of the call and the deposit ID, to ensure it's unique.
         pub Votes get(fn votes):
-            double_map hasher(blake2_256) ChainId, hasher(blake2_256) (DepositNonce, T::Proposal)
+            double_map hasher(opaque_blake2_256) ChainId, hasher(opaque_blake2_256) (DepositNonce, T::Proposal)
             => Option<ProposalVotes<T::AccountId, T::BlockNumber>>;
 
         /// Utilized by the bridge software to map resource IDs to actual methods
         pub Resources get(fn resources):
-            map hasher(blake2_256) ResourceId => Option<Vec<u8>>
+            map hasher(opaque_blake2_256) ResourceId => Option<Vec<u8>>
     }
 }
 

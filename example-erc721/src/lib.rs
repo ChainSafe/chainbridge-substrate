@@ -58,9 +58,9 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as TokenStorage {
         /// Maps tokenId to Erc721 object
-        Tokens get(tokens): map hasher(blake2_256) TokenId => Option<Erc721Token>;
+        Tokens get(tokens): map hasher(opaque_blake2_256) TokenId => Option<Erc721Token>;
         /// Maps tokenId to owner
-        TokenOwner get(owner_of): map hasher(blake2_256) TokenId => Option<T::AccountId>;
+        TokenOwner get(owner_of): map hasher(opaque_blake2_256) TokenId => Option<T::AccountId>;
         /// Total number of tokens in existence
         TokenCount get(token_count): U256 = U256::zero();
     }

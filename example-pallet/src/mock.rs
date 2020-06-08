@@ -9,7 +9,7 @@ use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
-    BuildStorage, ModuleId, Perbill,
+    ModuleId, Perbill,
 };
 
 use crate::{self as example, Trait};
@@ -43,7 +43,6 @@ impl frame_system::Trait for Test {
     type AccountData = balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
-    type MigrateAccount = ();
 }
 
 parameter_types! {
@@ -119,14 +118,15 @@ pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
-    GenesisConfig {
-        balances: Some(balances::GenesisConfig {
-            balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
-        }),
-    }
-    .build_storage()
-    .unwrap()
-    .into()
+    let mut t = frame_system::GenesisConfig::default()
+        .build_storage::<Test>()
+        .unwrap();
+    pallet_balances::GenesisConfig::<Test> {
+        balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
+    }.assimilate_storage(&mut t).unwrap();
+    let mut ext = sp_io::TestExternalities::new(t);
+    ext.execute_with(|| System::set_block_number(1));
+    ext
 }
 
 fn last_event() -> Event {

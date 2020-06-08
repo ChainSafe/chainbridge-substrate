@@ -5,14 +5,14 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::Get,
+    traits::{Get, EnsureOrigin},
     weights::{FunctionOf, GetDispatchInfo, SimpleDispatchInfo},
     Parameter,
 };
 
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
-use sp_runtime::traits::{AccountIdConversion, Dispatchable, EnsureOrigin};
+use sp_runtime::traits::{AccountIdConversion, Dispatchable};
 use sp_runtime::{ModuleId, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -529,7 +529,8 @@ impl<T: Trait> Module<T> {
         call: Box<T::Proposal>,
     ) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalApproved(src_id, nonce));
-        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())?;
+        call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+            .map(|_| ()).map_err(|e| e.error)?;
         Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce));
         Ok(())
     }

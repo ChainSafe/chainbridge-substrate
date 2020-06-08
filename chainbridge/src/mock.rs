@@ -8,7 +8,7 @@ use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
-    BuildStorage, Perbill,
+    Perbill,
 };
 
 use crate::{self as bridge, Trait};
@@ -41,7 +41,6 @@ impl frame_system::Trait for Test {
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
-    type MigrateAccount = ();
 }
 
 parameter_types! {
@@ -97,14 +96,15 @@ pub const TEST_THRESHOLD: u32 = 2;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let bridge_id = ModuleId(*b"cb/bridg").into_account();
-    GenesisConfig {
-        balances: Some(balances::GenesisConfig {
-            balances: vec![(bridge_id, ENDOWED_BALANCE)],
-        }),
-    }
-    .build_storage()
-    .unwrap()
-    .into()
+    let mut t = frame_system::GenesisConfig::default()
+        .build_storage::<Test>()
+        .unwrap();
+    pallet_balances::GenesisConfig::<Test> {
+        balances: vec![(bridge_id, ENDOWED_BALANCE)],
+    }.assimilate_storage(&mut t).unwrap();
+    let mut ext = sp_io::TestExternalities::new(t);
+    ext.execute_with(|| System::set_block_number(1));
+    ext
 }
 
 pub fn new_test_ext_initialized(

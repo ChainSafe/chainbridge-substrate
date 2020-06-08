@@ -1,6 +1,6 @@
 [package]
 name = 'chainbridge'
-version = '0.0.1-alpha.4'
+version = '0.0.2'
 authors = ['david@chainsafe.io']
 edition = '2018'
 

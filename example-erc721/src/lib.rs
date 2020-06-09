@@ -4,8 +4,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    traits::Get,
-    weights::SimpleDispatchInfo
+    traits::Get
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
@@ -59,11 +58,11 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as TokenStorage {
         /// Maps tokenId to Erc721 object
-        Tokens get(tokens): map hasher(opaque_blake2_256) TokenId => Option<Erc721Token>;
+        Tokens get(fn tokens): map hasher(opaque_blake2_256) TokenId => Option<Erc721Token>;
         /// Maps tokenId to owner
-        TokenOwner get(owner_of): map hasher(opaque_blake2_256) TokenId => Option<T::AccountId>;
+        TokenOwner get(fn owner_of): map hasher(opaque_blake2_256) TokenId => Option<T::AccountId>;
         /// Total number of tokens in existence
-        TokenCount get(token_count): U256 = U256::zero();
+        TokenCount get(fn token_count): U256 = U256::zero();
     }
 }
 
@@ -73,7 +72,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Creates a new token with the given token ID and metadata, and gives ownership to owner
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn mint(origin, owner: T::AccountId, id: TokenId, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -83,7 +82,7 @@ decl_module! {
         }
 
         /// Changes ownership of a token sender owns
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer(origin, to: T::AccountId, id: TokenId) -> DispatchResult {
             let sender = ensure_signed(origin)?;
 
@@ -93,7 +92,7 @@ decl_module! {
         }
 
         /// Remove token from the system
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn burn(origin, id: TokenId) -> DispatchResult {
             ensure_root(origin)?;
 

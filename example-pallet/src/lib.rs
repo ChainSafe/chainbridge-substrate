@@ -5,8 +5,7 @@ use chainbridge as bridge;
 use example_erc721 as erc721;
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get, EnsureOrigin};
 use frame_support::{
-    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure,
-    weights::SimpleDispatchInfo
+    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure
 };
 use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::SaturatedConversion;
@@ -62,7 +61,7 @@ decl_module! {
         //
 
         /// Transfers an arbitrary hash to a (whitelisted) destination chain.
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer_hash(origin, hash: T::Hash, dest_id: bridge::ChainId) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -72,7 +71,7 @@ decl_module! {
         }
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: bridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -84,7 +83,7 @@ decl_module! {
         }
 
         /// Transfer a non-fungible token (erc721) to a (whitelisted) destination chain.
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer_erc721(origin, recipient: Vec<u8>, token_id: U256, dest_id: bridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -105,7 +104,7 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the bridge account as the source
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             <T as Trait>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -113,7 +112,7 @@ decl_module! {
         }
 
         /// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
@@ -121,7 +120,7 @@ decl_module! {
         }
 
         /// Allows the bridge to issue new erc721 tokens
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn mint_erc721(origin, recipient: T::AccountId, id: U256, metadata: Vec<u8>) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             <erc721::Module<T>>::mint_token(recipient, id, metadata)?;

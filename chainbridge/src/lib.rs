@@ -177,7 +177,7 @@ decl_error! {
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as Bridge {
+    trait Store for Module<T: Trait> as ChainBridge {
         /// All whitelisted chains and their respective transaction counts
         ChainNonces get(fn chains): map hasher(blake2_256) ChainId => Option<DepositNonce>;
 

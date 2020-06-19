@@ -39,6 +39,7 @@ impl frame_system::Trait for Test {
     type DbWeight = ();
     type BlockExecutionWeight = ();
     type ExtrinsicBaseWeight = ();
+    type MaximumExtrinsicWeight = ();
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
@@ -78,9 +79,9 @@ impl bridge::Trait for Test {
 }
 
 parameter_types! {
-    pub const HashId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"hash"));
-    pub const NativeTokenId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"DAV"));
-    pub const Erc721Id: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"NFT"));
+    pub HashId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub NativeTokenId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"DAV"));
+    pub Erc721Id: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"NFT"));
 }
 
 impl erc721::Trait for Test {

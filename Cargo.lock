@@ -201,7 +201,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "chainbridge"
-version = "2.0.0-rc3"
+version = "0.0.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -334,7 +334,7 @@ checksum = "516aa8d7a71cb00a1c4146f0798549b93d083d4f189b3ced8f3de6b8f11ee6c4"
 
 [[package]]
 name = "example-erc721"
-version = "2.0.0-rc3"
+version = "0.0.1"
 dependencies = [
  "chainbridge",
  "frame-support",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "example-pallet"
-version = "2.0.0-rc3"
+version = "0.0.1"
 dependencies = [
  "chainbridge",
  "example-erc721",

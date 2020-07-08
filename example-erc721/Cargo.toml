@@ -1,6 +1,6 @@
 [package]
 name = 'example-erc721'
-version = '2.0.0-rc3'
+version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'
 

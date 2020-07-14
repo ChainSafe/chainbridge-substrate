@@ -4,7 +4,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    traits::Get
+    traits::Get,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;

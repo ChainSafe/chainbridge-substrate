@@ -105,7 +105,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bridge_id, ENDOWED_BALANCE)],
-    }.assimilate_storage(&mut t).unwrap();
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| System::set_block_number(1));
     ext

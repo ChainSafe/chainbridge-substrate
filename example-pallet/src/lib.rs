@@ -3,10 +3,8 @@
 
 use chainbridge as bridge;
 use example_erc721 as erc721;
-use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get, EnsureOrigin};
-use frame_support::{
-    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure
-};
+use frame_support::traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get};
+use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
 use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;

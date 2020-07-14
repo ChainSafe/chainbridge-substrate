@@ -5,7 +5,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Get, EnsureOrigin},
+    traits::{EnsureOrigin, Get},
     weights::{FunctionOf, GetDispatchInfo, Pays},
     Parameter,
 };
@@ -531,7 +531,8 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         Self::deposit_event(RawEvent::ProposalApproved(src_id, nonce));
         call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
-            .map(|_| ()).map_err(|e| e.error)?;
+            .map(|_| ())
+            .map_err(|e| e.error)?;
         Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce));
         Ok(())
     }

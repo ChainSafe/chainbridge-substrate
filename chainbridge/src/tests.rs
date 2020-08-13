@@ -273,7 +273,7 @@ fn create_sucessful_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -290,7 +290,7 @@ fn create_sucessful_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -307,7 +307,7 @@ fn create_sucessful_proposal() {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
             status: ProposalStatus::Approved,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -343,7 +343,7 @@ fn create_unsucessful_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -360,7 +360,7 @@ fn create_unsucessful_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -377,7 +377,7 @@ fn create_unsucessful_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B, RELAYER_C],
             status: ProposalStatus::Rejected,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -418,7 +418,7 @@ fn execute_after_threshold_change() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -438,7 +438,7 @@ fn execute_after_threshold_change() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Approved,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -479,12 +479,12 @@ fn proposal_expires() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
         // Increment enough blocks such that now == expiry
-        System::set_block_number(ProposalLifetime::get());
+        System::set_block_number(ProposalLifetime::get() + 1);
 
         // Attempt to submit a vote should fail
         assert_noop!(
@@ -504,7 +504,7 @@ fn proposal_expires() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -523,7 +523,7 @@ fn proposal_expires() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 

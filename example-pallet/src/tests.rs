@@ -278,7 +278,7 @@ fn create_sucessful_transfer_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![],
             status: bridge::ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -295,7 +295,7 @@ fn create_sucessful_transfer_proposal() {
             votes_for: vec![RELAYER_A],
             votes_against: vec![RELAYER_B],
             status: bridge::ProposalStatus::Initiated,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 
@@ -312,7 +312,7 @@ fn create_sucessful_transfer_proposal() {
             votes_for: vec![RELAYER_A, RELAYER_C],
             votes_against: vec![RELAYER_B],
             status: bridge::ProposalStatus::Approved,
-            expiry: ProposalLifetime::get(),
+            expiry: ProposalLifetime::get() + 1,
         };
         assert_eq!(prop, expected);
 

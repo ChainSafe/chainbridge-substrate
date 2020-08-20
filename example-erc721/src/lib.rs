@@ -72,7 +72,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Creates a new token with the given token ID and metadata, and gives ownership to owner
-        #[weight = 1_000_000]
+        #[weight = 195_000_000]
         pub fn mint(origin, owner: T::AccountId, id: TokenId, metadata: Vec<u8>) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -82,7 +82,7 @@ decl_module! {
         }
 
         /// Changes ownership of a token sender owns
-        #[weight = 1_000_000]
+        #[weight = 195_000_000]
         pub fn transfer(origin, to: T::AccountId, id: TokenId) -> DispatchResult {
             let sender = ensure_signed(origin)?;
 
@@ -92,7 +92,7 @@ decl_module! {
         }
 
         /// Remove token from the system
-        #[weight = 1_000_000]
+        #[weight = 195_000_000]
         pub fn burn(origin, id: TokenId) -> DispatchResult {
             ensure_root(origin)?;
 

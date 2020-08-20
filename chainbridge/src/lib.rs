@@ -220,7 +220,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::set_relayer_threshold(threshold)
@@ -231,7 +231,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) write
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::register_resource(id, method)
@@ -245,7 +245,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) removal
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::unregister_resource(id)
@@ -256,7 +256,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::whitelist(id)
@@ -267,7 +267,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::register_relayer(v)
@@ -278,7 +278,7 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and removal
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::unregister_relayer(v)
@@ -293,7 +293,7 @@ decl_module! {
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
         #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight + 500_000,
+            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight + 195_000_000,
             |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().class,
             Pays::Yes
         )]
@@ -311,7 +311,7 @@ decl_module! {
         /// # <weight>
         /// - Fixed, since execution of proposal should not be included
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 195_000_000]
         pub fn reject_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -330,7 +330,7 @@ decl_module! {
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
         #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight + 500_000,
+            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight + 195_000_000,
             |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
             Pays::Yes
         )]

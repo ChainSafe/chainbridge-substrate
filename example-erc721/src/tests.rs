@@ -13,7 +13,12 @@ fn mint_burn_tokens() {
         let metadata_a: Vec<u8> = vec![1, 2, 3];
         let metadata_b: Vec<u8> = vec![4, 5, 6];
 
-        assert_ok!(Erc721::mint(Origin::root(), USER_A, id_a, metadata_a.clone()));
+        assert_ok!(Erc721::mint(
+            Origin::root(),
+            USER_A,
+            id_a,
+            metadata_a.clone()
+        ));
         assert_eq!(
             Erc721::tokens(id_a).unwrap(),
             Erc721Token {
@@ -27,7 +32,12 @@ fn mint_burn_tokens() {
             Error::<Test>::TokenAlreadyExists
         );
 
-        assert_ok!(Erc721::mint(Origin::root(), USER_A, id_b, metadata_b.clone()));
+        assert_ok!(Erc721::mint(
+            Origin::root(),
+            USER_A,
+            id_b,
+            metadata_b.clone()
+        ));
         assert_eq!(
             Erc721::tokens(id_b).unwrap(),
             Erc721Token {
@@ -61,8 +71,18 @@ fn transfer_tokens() {
         let metadata_a: Vec<u8> = vec![1, 2, 3];
         let metadata_b: Vec<u8> = vec![4, 5, 6];
 
-        assert_ok!(Erc721::mint(Origin::root(), USER_A, id_a, metadata_a.clone()));
-        assert_ok!(Erc721::mint(Origin::root(), USER_A, id_b, metadata_b.clone()));
+        assert_ok!(Erc721::mint(
+            Origin::root(),
+            USER_A,
+            id_a,
+            metadata_a.clone()
+        ));
+        assert_ok!(Erc721::mint(
+            Origin::root(),
+            USER_A,
+            id_b,
+            metadata_b.clone()
+        ));
 
         assert_ok!(Erc721::transfer(Origin::signed(USER_A), USER_B, id_a));
         assert_eq!(Erc721::owner_of(id_a).unwrap(), USER_B);

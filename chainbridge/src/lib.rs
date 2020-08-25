@@ -6,7 +6,7 @@ use frame_support::{
     dispatch::DispatchResult,
     ensure,
     traits::{EnsureOrigin, Get},
-    weights::{FunctionOf, GetDispatchInfo, Pays},
+    weights::{GetDispatchInfo, Pays},
     Parameter,
 };
 
@@ -292,11 +292,7 @@ decl_module! {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().weight + 195_000_000,
-            |args: (&DepositNonce, &ChainId, &ResourceId, &Box<<T as Trait>::Proposal>)| args.3.get_dispatch_info().class,
-            Pays::Yes
-        )]
+        #[weight = (call.get_dispatch_info().weight + 195_000_000, call.get_dispatch_info().class, Pays::Yes)]
         pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Trait>::Proposal>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -329,11 +325,7 @@ decl_module! {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[weight = FunctionOf(
-            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().weight + 195_000_000,
-            |args: (&DepositNonce, &ChainId, &Box<<T as Trait>::Proposal>)| args.2.get_dispatch_info().class,
-            Pays::Yes
-        )]
+        #[weight = (prop.get_dispatch_info().weight + 195_000_000, prop.get_dispatch_info().class, Pays::Yes)]
         pub fn eval_vote_state(origin, nonce: DepositNonce, src_id: ChainId, prop: Box<<T as Trait>::Proposal>) -> DispatchResult {
             ensure_signed(origin)?;
 

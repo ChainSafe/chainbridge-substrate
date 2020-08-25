@@ -24,8 +24,9 @@ parameter_types! {
 }
 
 impl frame_system::Trait for Test {
+    type BaseCallFilter = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -47,6 +48,7 @@ impl frame_system::Trait for Test {
     type AccountData = balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
+    type SystemWeightInfo = ();
 }
 
 parameter_types! {
@@ -63,6 +65,7 @@ impl pallet_balances::Trait for Test {
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
+    type WeightInfo = ();
 }
 
 parameter_types! {

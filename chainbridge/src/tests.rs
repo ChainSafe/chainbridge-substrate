@@ -79,13 +79,13 @@ fn setup_resources() {
         let method = "Pallet.do_something".as_bytes().to_vec();
         let method2 = "Pallet.do_somethingElse".as_bytes().to_vec();
 
-        assert_ok!(Bridge::set_resource(Origin::ROOT, id, method.clone()));
+        assert_ok!(Bridge::set_resource(Origin::root(), id, method.clone()));
         assert_eq!(Bridge::resources(id), Some(method));
 
-        assert_ok!(Bridge::set_resource(Origin::ROOT, id, method2.clone()));
+        assert_ok!(Bridge::set_resource(Origin::root(), id, method2.clone()));
         assert_eq!(Bridge::resources(id), Some(method2));
 
-        assert_ok!(Bridge::remove_resource(Origin::ROOT, id));
+        assert_ok!(Bridge::remove_resource(Origin::root(), id));
         assert_eq!(Bridge::resources(id), None);
     })
 }
@@ -95,9 +95,9 @@ fn whitelist_chain() {
     new_test_ext().execute_with(|| {
         assert!(!Bridge::chain_whitelisted(0));
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, 0));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), 0));
         assert_noop!(
-            Bridge::whitelist_chain(Origin::ROOT, TestChainId::get()),
+            Bridge::whitelist_chain(Origin::root(), TestChainId::get()),
             Error::<Test>::InvalidChainId
         );
 
@@ -110,10 +110,10 @@ fn set_get_threshold() {
     new_test_ext().execute_with(|| {
         assert_eq!(<RelayerThreshold>::get(), 1);
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD));
         assert_eq!(<RelayerThreshold>::get(), TEST_THRESHOLD);
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, 5));
+        assert_ok!(Bridge::set_threshold(Origin::root(), 5));
         assert_eq!(<RelayerThreshold>::get(), 5);
 
         assert_events(vec![
@@ -133,9 +133,9 @@ fn asset_transfer_success() {
         let amount = 100;
         let token_id = vec![1, 2, 3, 4];
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_id.clone()));
         assert_ok!(Bridge::transfer_fungible(
             dest_id.clone(),
             resource_id.clone(),
@@ -190,7 +190,7 @@ fn asset_transfer_invalid_chain() {
         let bad_dest_id = 3;
         let resource_id = [4; 32];
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, chain_id.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), chain_id.clone()));
         assert_events(vec![Event::bridge(RawEvent::ChainWhitelisted(
             chain_id.clone(),
         ))]);
@@ -215,25 +215,25 @@ fn asset_transfer_invalid_chain() {
 #[test]
 fn add_remove_relayer() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
         assert_eq!(Bridge::relayer_count(), 0);
 
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_C));
         assert_eq!(Bridge::relayer_count(), 3);
 
         // Already exists
         assert_noop!(
-            Bridge::add_relayer(Origin::ROOT, RELAYER_A),
+            Bridge::add_relayer(Origin::root(), RELAYER_A),
             Error::<Test>::RelayerAlreadyExists
         );
 
         // Confirm removal
-        assert_ok!(Bridge::remove_relayer(Origin::ROOT, RELAYER_B));
+        assert_ok!(Bridge::remove_relayer(Origin::root(), RELAYER_B));
         assert_eq!(Bridge::relayer_count(), 2);
         assert_noop!(
-            Bridge::remove_relayer(Origin::ROOT, RELAYER_B),
+            Bridge::remove_relayer(Origin::root(), RELAYER_B),
             Error::<Test>::RelayerInvalid
         );
         assert_eq!(Bridge::relayer_count(), 2);
@@ -423,7 +423,7 @@ fn execute_after_threshold_change() {
         assert_eq!(prop, expected);
 
         // Change threshold
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, 1));
+        assert_ok!(Bridge::set_threshold(Origin::root(), 1));
 
         // Attempt to execute
         assert_ok!(Bridge::eval_vote_state(

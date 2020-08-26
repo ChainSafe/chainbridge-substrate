@@ -30,9 +30,9 @@ fn transfer_hash() {
         let resource_id = HashId::get();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
         assert_ok!(Example::transfer_hash(
             Origin::signed(1),
             hash.clone(),
@@ -56,7 +56,7 @@ fn transfer_native() {
         let amount: u64 = 100;
         let recipient = vec![99];
 
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
         assert_ok!(Example::transfer_native(
             Origin::signed(RELAYER_A),
             amount.clone(),
@@ -87,7 +87,7 @@ fn transfer_erc721() {
 
         // Create a token
         assert_ok!(Erc721::mint(
-            Origin::ROOT,
+            Origin::root(),
             RELAYER_A,
             token_id,
             metadata.clone()
@@ -101,7 +101,7 @@ fn transfer_erc721() {
         );
 
         // Whitelist destination and transfer
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
         assert_ok!(Example::transfer_erc721(
             Origin::signed(RELAYER_A),
             recipient.clone(),
@@ -144,11 +144,11 @@ fn execute_remark() {
         let r_id = bridge::derive_resource_id(src_id, b"hash");
         let resource = b"Example.remark".to_vec();
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
-        assert_ok!(Bridge::set_resource(Origin::ROOT, r_id, resource));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), src_id));
+        assert_ok!(Bridge::set_resource(Origin::root(), r_id, resource));
 
         assert_ok!(Bridge::acknowledge_proposal(
             Origin::signed(RELAYER_A),
@@ -182,7 +182,7 @@ fn execute_remark_bad_origin() {
         );
         // Don't allow root calls
         assert_noop!(
-            Example::remark(Origin::ROOT, hash),
+            Example::remark(Origin::root(), hash),
             DispatchError::BadOrigin
         );
     })
@@ -258,12 +258,12 @@ fn create_sucessful_transfer_proposal() {
         let resource = b"Example.transfer".to_vec();
         let proposal = make_transfer_proposal(RELAYER_A, 10);
 
-        assert_ok!(Bridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::ROOT, RELAYER_C));
-        assert_ok!(Bridge::whitelist_chain(Origin::ROOT, src_id));
-        assert_ok!(Bridge::set_resource(Origin::ROOT, r_id, resource));
+        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
+        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(Origin::root(), src_id));
+        assert_ok!(Bridge::set_resource(Origin::root(), r_id, resource));
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(

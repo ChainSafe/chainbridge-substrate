@@ -10,22 +10,22 @@ codec = { package = "parity-scale-codec", version = "1.3.4", default-features = 
 serde = { version = "1.0.102", optional = true }
 
 # primitives
-sp-std = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
-sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
-sp-io = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
-sp-core = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+sp-std = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-runtime = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-io = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-core = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 # frame dependencies
-frame-support = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
-frame-system = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+frame-support = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
+frame-system = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 chainbridge = { path = "../chainbridge" , default-features = false }
 
 [dev-dependencies]
-pallet-balances = { version = "2.0.0-rc6", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+pallet-balances = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [build-dependencies]
-wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git" }
 [features]
 default = ["std"]
 std = [

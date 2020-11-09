@@ -176,7 +176,11 @@ fn execute_remark_bad_origin() {
     new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let resource_id = HashId::get();
-        assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash, resource_id));
+        assert_ok!(Example::remark(
+            Origin::signed(Bridge::account_id()),
+            hash,
+            resource_id
+        ));
         // Don't allow any signed origin except from bridge addr
         assert_noop!(
             Example::remark(Origin::signed(RELAYER_A), hash, resource_id),

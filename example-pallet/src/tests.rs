@@ -16,11 +16,13 @@ use sp_core::{blake2_256, H256};
 const TEST_THRESHOLD: u32 = 2;
 
 fn make_remark_proposal(hash: H256) -> Call {
-    Call::Example(crate::Call::remark(hash))
+    let resource_id = HashId::get();
+    Call::Example(crate::Call::remark(hash, resource_id))
 }
 
 fn make_transfer_proposal(to: u64, amount: u64) -> Call {
-    Call::Example(crate::Call::transfer(to, amount.into()))
+    let resource_id = HashId::get();
+    Call::Example(crate::Call::transfer(to, amount.into(), resource_id))
 }
 
 #[test]
@@ -173,16 +175,20 @@ fn execute_remark() {
 fn execute_remark_bad_origin() {
     new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
-
-        assert_ok!(Example::remark(Origin::signed(Bridge::account_id()), hash));
+        let resource_id = HashId::get();
+        assert_ok!(Example::remark(
+            Origin::signed(Bridge::account_id()),
+            hash,
+            resource_id
+        ));
         // Don't allow any signed origin except from bridge addr
         assert_noop!(
-            Example::remark(Origin::signed(RELAYER_A), hash),
+            Example::remark(Origin::signed(RELAYER_A), hash, resource_id),
             DispatchError::BadOrigin
         );
         // Don't allow root calls
         assert_noop!(
-            Example::remark(Origin::root(), hash),
+            Example::remark(Origin::root(), hash, resource_id),
             DispatchError::BadOrigin
         );
     })
@@ -193,12 +199,14 @@ fn transfer() {
     new_test_ext().execute_with(|| {
         // Check inital state
         let bridge_id: u64 = Bridge::account_id();
+        let resource_id = HashId::get();
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
         // Transfer and check result
         assert_ok!(Example::transfer(
             Origin::signed(Bridge::account_id()),
             RELAYER_A,
-            10
+            10,
+            resource_id,
         ));
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
@@ -218,7 +226,7 @@ fn mint_erc721() {
         let recipient = RELAYER_A;
         let metadata = vec![1, 1, 1, 1];
         let bridge_id: u64 = Bridge::account_id();
-
+        let resource_id = HashId::get();
         // Token doesn't yet exist
         assert_eq!(Erc721::tokens(token_id), None);
         // Mint
@@ -226,7 +234,8 @@ fn mint_erc721() {
             Origin::signed(bridge_id),
             recipient,
             token_id,
-            metadata.clone()
+            metadata.clone(),
+            resource_id,
         ));
         // Ensure token exists
         assert_eq!(
@@ -242,7 +251,8 @@ fn mint_erc721() {
                 Origin::signed(bridge_id),
                 recipient,
                 token_id,
-                metadata.clone()
+                metadata.clone(),
+                resource_id,
             ),
             erc721::Error::<Test>::TokenAlreadyExists
         );

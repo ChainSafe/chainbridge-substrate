@@ -16,7 +16,7 @@ sp-io = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.1", default-features = false }
 
 # frame dependencies
-frame-support = { version = "2.0.0", default-features = false }
+frame-support = { version = "2.0.1", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 
 pallet-balances = { version = "2.0.1", default-features = false }

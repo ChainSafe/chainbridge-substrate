@@ -24,7 +24,7 @@ chainbridge = { path = "../chainbridge" , default-features = false}
 example-erc721 = { path = "../example-erc721", default-features = false }
 
 [dev-dependencies]
-pallet-balances = { version = "2.0.0", default-features = false }
+pallet-balances = { version = "2.0.1", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner" }

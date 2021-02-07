@@ -1,4 +1,6 @@
-on: [push, pull_request]
+on:
+  pull_request:
+      types: [ opened, synchronize, reopened ]
 
 name: Cross-compile
 
@@ -57,6 +59,7 @@ jobs:
         with:
           toolchain: nightly-2020-10-06
           target: ${{ matrix.target }}
+          components: rustfmt
           override: true
       - name: Build
         uses: actions-rs/cargo@v1

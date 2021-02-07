@@ -19,7 +19,7 @@ sp-core = { version = "2.0.1", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 
-pallet-balances = { version = "2.0.0", default-features = false }
+pallet-balances = { version = "2.0.1", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner"}

@@ -577,9 +577,9 @@ dependencies = [
 
 [[package]]
 name = "frame-system"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d172404f0e44b867f5fd14465a27f298b8828b53d7a7a555d3759e1dec3c8f0d"
+checksum = "6bd441142244193759326c7311d075716d1aaa98a9ad50491af923a4c6e42f3b"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",

@@ -16,10 +16,10 @@ mod tests;
 type ResourceId = bridge::ResourceId;
 
 type BalanceOf<T> =
-    <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+    <<T as Trait>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-pub trait Trait: system::Trait + bridge::Trait + erc721::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Trait: system::Config + bridge::Config + erc721::Config {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 
@@ -34,7 +34,7 @@ pub trait Trait: system::Trait + bridge::Trait + erc721::Trait {
 
 decl_event! {
     pub enum Event<T> where
-        <T as frame_system::Trait>::Hash,
+        <T as frame_system::Config>::Hash,
     {
         Remark(Hash),
     }

@@ -8,14 +8,13 @@ use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
+    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
     ModuleId, Perbill,
 };
 
 use crate::{self as example, Config};
 use chainbridge as bridge;
 pub use pallet_balances as balances;
-use frame_system::limits::{BlockLength, BlockWeights};
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

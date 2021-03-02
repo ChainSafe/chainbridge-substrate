@@ -7,13 +7,12 @@ use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
+    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
     Perbill,
 };
 
 use crate::{self as bridge, Config};
 pub use pallet_balances as balances;
-use frame_system::limits::{BlockLength, BlockWeights};
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

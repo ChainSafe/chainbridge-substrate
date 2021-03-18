@@ -77,7 +77,7 @@ decl_module! {
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let resource_id = T::NativeTokenId::get();
-            <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))
+            <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into::<u128>()))
         }
 
         /// Transfer a non-fungible token (erc721) to a (whitelisted) destination chain.

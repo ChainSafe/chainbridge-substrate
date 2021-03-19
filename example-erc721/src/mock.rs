@@ -6,11 +6,11 @@ use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, Block as BlockT, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup},
     BuildStorage, Perbill,
 };
 
-use crate::{self as erc721, Trait};
+use crate::{self as erc721, Config};
 use chainbridge as bridge;
 pub use pallet_balances as balances;
 
@@ -22,7 +22,7 @@ parameter_types! {
     pub const MaxLocks: u32 = 100;
 }
 
-impl frame_system::Trait for Test {
+impl frame_system::Config for Test {
     type BaseCallFilter = ();
     type Origin = Origin;
     type Call = Call;
@@ -35,19 +35,16 @@ impl frame_system::Trait for Test {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = ();
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type BlockWeights = ();
+    type BlockLength = ();
+    type SS58Prefix = ();
 }
 
 parameter_types! {
@@ -58,7 +55,7 @@ ord_parameter_types! {
     pub const One: u64 = 1;
 }
 
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Test {
     type Balance = u64;
     type DustRemoval = ();
     type Event = Event;
@@ -72,7 +69,7 @@ parameter_types! {
     pub Erc721Id: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"NFT"));
 }
 
-impl Trait for Test {
+impl Config for Test {
     type Event = Event;
     type Identifier = Erc721Id;
 }

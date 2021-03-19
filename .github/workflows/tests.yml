@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2020-10-06
+          toolchain: nightly-2020-11-30
           target: ${{ matrix.target }}
           override: true
       - name: Build

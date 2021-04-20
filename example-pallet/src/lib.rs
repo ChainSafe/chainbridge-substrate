@@ -103,7 +103,7 @@ decl_module! {
 
         /// Executes a simple currency transfer using the bridge account as the source
         #[weight = 195_000_000]
-        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, r_id: ResourceId) -> DispatchResult {
+        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, _r_id: ResourceId) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             <T as Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
@@ -111,7 +111,7 @@ decl_module! {
 
         /// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
         #[weight = 195_000_000]
-        pub fn remark(origin, hash: T::Hash, r_id: ResourceId) -> DispatchResult {
+        pub fn remark(origin, hash: T::Hash, _r_id: ResourceId) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
             Ok(())
@@ -119,7 +119,7 @@ decl_module! {
 
         /// Allows the bridge to issue new erc721 tokens
         #[weight = 195_000_000]
-        pub fn mint_erc721(origin, recipient: T::AccountId, id: U256, metadata: Vec<u8>, r_id: ResourceId) -> DispatchResult {
+        pub fn mint_erc721(origin, recipient: T::AccountId, id: U256, metadata: Vec<u8>, _r_id: ResourceId) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             <erc721::Module<T>>::mint_token(recipient, id, metadata)?;
             Ok(())

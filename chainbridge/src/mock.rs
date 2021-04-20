@@ -101,7 +101,7 @@ pub const ENDOWED_BALANCE: u64 = 100_000_000;
 pub const TEST_THRESHOLD: u32 = 2;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = ModuleId(*b"cb/bridg").into_account();
+    let bridge_id = PalletId(*b"cb/bridg").into_account();
     let mut t = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();

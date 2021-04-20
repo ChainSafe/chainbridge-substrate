@@ -2,14 +2,14 @@
 
 use super::*;
 
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
+use frame_support::{ord_parameter_types, parameter_types, weights::Weight, PalletId};
 use frame_system::{self as system};
 use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-    ModuleId, Perbill,
+    Perbill,
 };
 
 use crate::{self as example, Config};
@@ -123,7 +123,7 @@ pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = ModuleId(*b"cb/bridg").into_account();
+    let bridge_id = PalletId(*b"cb/bridg").into_account();
     let mut t = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();

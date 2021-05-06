@@ -616,6 +616,6 @@ impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
 
     #[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> T::Origin {
-		unimplemented!()
+		T::Origin::from(system::RawOrigin::Signed(MODULE_ID.into_account()))
 	}
 }

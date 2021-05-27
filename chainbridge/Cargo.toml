@@ -10,16 +10,16 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 serde = { version = "1.0.101", optional = true }
 
 # primitives
-sp-std = { version = "3.0.0", default-features = false }
-sp-runtime = { version = "3.0.0", default-features = false }
-sp-io = { version = "3.0.0", default-features = false }
-sp-core = { version = "3.0.0", default-features = false }
+sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
+sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
 # frame dependencies
-frame-support = { version = "3.0.0", default-features = false }
-frame-system = { version = "3.0.0", default-features = false }
+frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 
-pallet-balances = { version = "3.0.0", default-features = false }
+pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner"}

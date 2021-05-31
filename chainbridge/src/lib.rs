@@ -5,15 +5,23 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{EnsureOrigin, Get},
-    weights::{GetDispatchInfo, Pays},
+    PalletId,
+    traits::{
+        EnsureOrigin, 
+        Get,
+    },
+    weights::{
+        GetDispatchInfo, 
+        Pays,
+    },
     Parameter,
 };
+
 
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable};
-use sp_runtime::{ModuleId, RuntimeDebug};
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 use codec::{Decode, Encode, EncodeLike};
@@ -22,7 +30,7 @@ mod mock;
 mod tests;
 
 const DEFAULT_RELAYER_THRESHOLD: u32 = 1;
-const MODULE_ID: ModuleId = ModuleId(*b"cb/bridg");
+const MODULE_ID: PalletId = PalletId(*b"cb/bridg");
 
 pub type ChainId = u8;
 pub type DepositNonce = u64;
@@ -89,8 +97,8 @@ impl<A: PartialEq, B: PartialOrd + Default> ProposalVotes<A, B> {
 impl<AccountId, BlockNumber: Default> Default for ProposalVotes<AccountId, BlockNumber> {
     fn default() -> Self {
         Self {
-            votes_for: vec![],
-            votes_against: vec![],
+            votes_for: Vec::new(),
+            votes_against: Vec::new(),
             status: ProposalStatus::Initiated,
             expiry: BlockNumber::default(),
         }
@@ -440,7 +448,7 @@ impl<T: Config> Module<T> {
         prop: Box<T::Proposal>,
         in_favour: bool,
     ) -> DispatchResult {
-        let now = <frame_system::Module<T>>::block_number();
+        let now = <frame_system::Pallet<T>>::block_number();
         let mut votes = match <Votes<T>>::get(src_id, (nonce, prop.clone())) {
             Some(v) => v,
             None => {
@@ -475,7 +483,7 @@ impl<T: Config> Module<T> {
         prop: Box<T::Proposal>,
     ) -> DispatchResult {
         if let Some(mut votes) = <Votes<T>>::get(src_id, (nonce, prop.clone())) {
-            let now = <frame_system::Module<T>>::block_number();
+            let now = <frame_system::Pallet<T>>::block_number();
             ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
             ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
 

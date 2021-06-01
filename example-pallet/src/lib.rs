@@ -31,7 +31,10 @@ type ResourceId = bridge::ResourceId;
 type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-pub trait Config: system::Config + bridge::Config + erc721::Config + Contracts_Config {
+pub trait Config: system::Config + bridge::Config + erc721::Config + Contracts_Config
+where
+    Self::AccountId: UncheckedFrom<Self::Hash> + AsRef<[u8]>,
+{
     // type AccountId: UncheckedFrom<Self::Hash> + AsRef<[u8]>;
     type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
@@ -61,7 +64,7 @@ decl_error! {
 }
 
 decl_module! {
-    pub struct Module<T: Config> for enum Call where origin: T::Origin, T::AccountId: UncheckedFrom<T::Hash>, T::AccountId: AsRef<[u8]> {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin, T::AccountId: UncheckedFrom<T::Hash>, T::AccountId: AsRef<[u8]>, {
         const HashId: ResourceId = T::HashId::get();
         const NativeTokenId: ResourceId = T::NativeTokenId::get();
         const Erc721Id: ResourceId = T::Erc721Id::get();

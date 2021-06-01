@@ -6,19 +6,33 @@ use example_erc721 as erc721;
 use frame_support::traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
 use frame_system::{self as system, ensure_signed};
+use pallet_contracts::Config as Contracts_Config;
+use pallet_contracts::Pallet as Contracts;
 use sp_arithmetic::traits::SaturatedConversion;
+use sp_core::crypto::UncheckedFrom;
 use sp_core::U256;
 use sp_std::prelude::*;
 
 mod mock;
 mod tests;
 
+mod constants {
+    use hex_literal::hex;
+
+    /// The code hash of the contract that will be instantiated. Get it from metadata.json of the contract.
+    pub const CONTRACT_CODE_HASH: [u8; 32] =
+        hex!("ffd5772ad72d1305cf60c0be50bcd7ac172f3f53c08b7df65cc99ab85c8c44aa");
+    /// The selector of the message to call
+    pub const SELECTOR: [u8; 4] = hex!("ae04b6d1");
+}
+
 type ResourceId = bridge::ResourceId;
 
 type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-pub trait Config: system::Config + bridge::Config + erc721::Config {
+pub trait Config: system::Config + bridge::Config + erc721::Config + Contracts_Config {
+    // type AccountId: UncheckedFrom<Self::Hash> + AsRef<[u8]>;
     type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -47,7 +61,7 @@ decl_error! {
 }
 
 decl_module! {
-    pub struct Module<T: Config> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin, T::AccountId: UncheckedFrom<T::Hash>, T::AccountId: AsRef<[u8]> {
         const HashId: ResourceId = T::HashId::get();
         const NativeTokenId: ResourceId = T::NativeTokenId::get();
         const Erc721Id: ResourceId = T::Erc721Id::get();
@@ -74,7 +88,7 @@ decl_module! {
             let source = ensure_signed(origin)?;
             ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
             let bridge_id = <bridge::Module<T>>::account_id();
-            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+            // T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let resource_id = T::NativeTokenId::get();
             <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into::<u128>()))
@@ -104,8 +118,34 @@ decl_module! {
         /// Executes a simple currency transfer using the bridge account as the source
         #[weight = 195_000_000]
         pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, r_id: ResourceId) -> DispatchResult {
+            use core::array::IntoIter;
+            use constants::*;
             let source = T::BridgeOrigin::ensure_origin(origin)?;
-            <T as Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+            // <T as Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+
+            // Retrieve sender of the transaction.
+            let who = ensure_signed(origin)?;
+
+            // // convert the code hash to `Hash` type
+            // // TODO: This should be moved to the genesis config I think?
+            let mut code_hash = T::Hash::default();
+            code_hash.as_mut().copy_from_slice(&CONTRACT_CODE_HASH);
+
+            // // generate the address for the contract
+            let contract_address = <Contracts<T>>::contract_address(&who, &code_hash, &[]);
+            // // debug::info!("contract_address: {:x?}", contract_address);
+
+            let result = <Contracts<T>>::bare_call(
+                who,
+                contract_address,
+                0_u32.into(),
+                10_000_000_000,
+                IntoIter::new(SELECTOR)
+                    .chain(AsRef::<[u8]>::as_ref(&source).to_vec())
+                    .chain(AsRef::<[u8]>::as_ref(&to).to_vec())
+                    // .chain(amount.clone())
+                    .collect(),
+            );
             Ok(())
         }
 

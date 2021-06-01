@@ -20,8 +20,11 @@ sp-arithmetic = { version = "3.0.0", default-features = false }
 frame-support = { version = "3.0.0", default-features = false }
 frame-system = { version = "3.0.0", default-features = false }
 
-chainbridge = { path = "../chainbridge" , default-features = false}
+chainbridge = { path = "../chainbridge", default-features = false }
 example-erc721 = { path = "../example-erc721", default-features = false }
+
+pallet-contracts = { version = "3.0.0", default-features = false }
+hex-literal = "0.3.1"
 
 [dev-dependencies]
 pallet-balances = { version = "3.0.0", default-features = false }
@@ -35,11 +38,12 @@ std = [
 	"serde",
 	"sp-std/std",
 	"sp-runtime/std",
-    "sp-io/std",
-    "sp-core/std",
-    "sp-arithmetic/std",
+	"sp-io/std",
+	"sp-core/std",
+	"sp-arithmetic/std",
 	"frame-support/std",
 	"frame-system/std",
 	"chainbridge/std",
-    "example-erc721/std"
+	"example-erc721/std",
+	"pallet-contracts/std",
 ]

@@ -6,8 +6,7 @@ use example_erc721 as erc721;
 use frame_support::traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
 use frame_system::{self as system, ensure_signed};
-use pallet_contracts::Config as Contracts_Config;
-use pallet_contracts::Pallet as Contracts;
+use pallet_contracts::Module as Contracts;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::crypto::UncheckedFrom;
 use sp_core::U256;
@@ -31,11 +30,12 @@ type ResourceId = bridge::ResourceId;
 type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-pub trait Config: system::Config + bridge::Config + erc721::Config + Contracts_Config
+pub trait Config:
+    system::Config + bridge::Config + erc721::Config + pallet_contracts::Config
 where
-    Self::AccountId: UncheckedFrom<Self::Hash> + AsRef<[u8]>,
+    Self::AccountId: UncheckedFrom<Self::Hash>,
+    Self::AccountId: AsRef<[u8]>,
 {
-    // type AccountId: UncheckedFrom<Self::Hash> + AsRef<[u8]>;
     type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -58,7 +58,7 @@ decl_event! {
 }
 
 decl_error! {
-    pub enum Error for Module<T: Config>{
+    pub enum Error for Module<T: Config> where T::AccountId: AsRef<[u8]> {
         InvalidTransfer,
     }
 }

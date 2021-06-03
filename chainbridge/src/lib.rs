@@ -2,7 +2,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
+    debug, decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
     traits::{EnsureOrigin, Get},
@@ -298,6 +298,8 @@ decl_module! {
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
             ensure!(Self::resource_exists(r_id), Error::<T>::ResourceDoesNotExist);
+
+            debug::info!("Module ID: {:x?}", Self::account_id());
 
             Self::vote_for(who, nonce, src_id, call)
         }

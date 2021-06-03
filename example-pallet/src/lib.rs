@@ -193,7 +193,7 @@ pub mod pallet {
 
             // // generate the address for the contract
             let contract_address = <Contracts<T>>::contract_address(&source, &code_hash, &[]);
-            // debug::info!("contract_address: {:x?}", contract_address);
+            debug::info!("contract_address: {:x?}", contract_address);
 
             let result = <Contracts<T>>::bare_call(
                 source.clone(),

@@ -205,6 +205,13 @@ pub mod pallet {
                     .chain(amount.encode())
                     .collect(),
             );
+
+            if let Err(e) = result.exec_result {
+                debug::error!("erc20 contract error: {:?}", e);
+            } else {
+                debug::info!("call succeeded {:?}", result);
+            }
+
             Ok(().into())
         }
 

@@ -20,9 +20,9 @@ mod constants {
 
     /// The code hash of the contract that will be instantiated. Get it from metadata.json of the contract.
     pub const CONTRACT_CODE_HASH: [u8; 32] =
-        hex!("ffd5772ad72d1305cf60c0be50bcd7ac172f3f53c08b7df65cc99ab85c8c44aa");
+        hex!("d174dc6e68f6f23eedb52608e204239ed01a317f990bec0c05f48c721d34823d");
     /// The selector of the message to call
-    pub const SELECTOR: [u8; 4] = hex!("ae04b6d1");
+    pub const MINT_SELECTOR: [u8; 4] = hex!("CAFEBABE");
 }
 
 type ResourceId = bridge::ResourceId;
@@ -193,15 +193,14 @@ pub mod pallet {
 
             // // generate the address for the contract
             let contract_address = <Contracts<T>>::contract_address(&source, &code_hash, &[]);
-            // // debug::info!("contract_address: {:x?}", contract_address);
+            // debug::info!("contract_address: {:x?}", contract_address);
 
             let result = <Contracts<T>>::bare_call(
                 source.clone(),
                 contract_address,
                 0_u32.into(),
                 10_000_000_000,
-                IntoIter::new(SELECTOR)
-                    .chain(AsRef::<[u8]>::as_ref(&source).to_vec())
+                IntoIter::new(MINT_SELECTOR)
                     .chain(AsRef::<[u8]>::as_ref(&to).to_vec())
                     .chain(amount.encode())
                     .collect(),

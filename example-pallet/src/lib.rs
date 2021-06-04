@@ -172,7 +172,7 @@ pub mod pallet {
         //
 
         /// Executes a simple currency transfer using the bridge account as the source
-        #[pallet::weight(195_000_000)]
+        #[pallet::weight(0)]
         pub fn transfer(
             origin: OriginFor<T>,
             to: T::AccountId,
@@ -203,7 +203,7 @@ pub mod pallet {
                 source,
                 contract_address,
                 0_u32.into(),
-                1000_000,
+                10_000_000_000,
                 IntoIter::new(MINT_SELECTOR)
                     .chain(AsRef::<[u8]>::as_ref(&to).to_vec())
                     .chain(amount.encode())

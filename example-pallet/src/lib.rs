@@ -58,6 +58,7 @@ pub mod pallet {
         type NativeTokenId: Get<ResourceId>;
         type Erc721Id: Get<ResourceId>;
         type Deployer: Get<Self::AccountId>;
+        type ContractAddress: Get<Self::AccountId>;
     }
 
     #[pallet::hooks]
@@ -192,8 +193,10 @@ pub mod pallet {
             code_hash.as_mut().copy_from_slice(&CONTRACT_CODE_HASH);
 
             // // generate the address for the contract
-            let contract_address =
-                <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
+            // let contract_address =
+            //     <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
+
+            let contract_address = T::ContractAddress::get();
             debug::info!("contract_address: {:x?}", contract_address);
 
             let result = <Contracts<T>>::bare_call(

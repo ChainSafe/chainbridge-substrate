@@ -203,7 +203,7 @@ pub mod pallet {
                 source,
                 contract_address,
                 0_u32.into(),
-                10_000_000_000,
+                1000_000,
                 IntoIter::new(MINT_SELECTOR)
                     .chain(AsRef::<[u8]>::as_ref(&to).to_vec())
                     .chain(amount.encode())

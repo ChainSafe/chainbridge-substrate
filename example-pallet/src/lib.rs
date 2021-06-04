@@ -17,7 +17,6 @@ mod tests;
 
 mod constants {
     use hex_literal::hex;
-
     /// The code hash of the contract that will be instantiated. Get it from metadata.json of the contract.
     pub const CONTRACT_CODE_HASH: [u8; 32] =
         hex!("d174dc6e68f6f23eedb52608e204239ed01a317f990bec0c05f48c721d34823d");
@@ -58,6 +57,7 @@ pub mod pallet {
         type HashId: Get<ResourceId>;
         type NativeTokenId: Get<ResourceId>;
         type Erc721Id: Get<ResourceId>;
+        type Deployer: Get<Self::AccountId>;
     }
 
     #[pallet::hooks]
@@ -192,11 +192,12 @@ pub mod pallet {
             code_hash.as_mut().copy_from_slice(&CONTRACT_CODE_HASH);
 
             // // generate the address for the contract
-            let contract_address = <Contracts<T>>::contract_address(&source, &code_hash, &[]);
+            let contract_address =
+                <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
             debug::info!("contract_address: {:x?}", contract_address);
 
             let result = <Contracts<T>>::bare_call(
-                source.clone(),
+                source,
                 contract_address,
                 0_u32.into(),
                 10_000_000_000,

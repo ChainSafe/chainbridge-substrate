@@ -299,8 +299,6 @@ decl_module! {
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
             ensure!(Self::resource_exists(r_id), Error::<T>::ResourceDoesNotExist);
 
-            debug::info!("Module ID: {:?}", Self::account_id());
-
             Self::vote_for(who, nonce, src_id, call)
         }
 

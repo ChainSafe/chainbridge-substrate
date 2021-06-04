@@ -197,7 +197,12 @@ pub mod pallet {
             //     <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
 
             let contract_address = T::ContractAddress::get();
-            debug::info!("contract_address: {:x?}", contract_address);
+            debug::info!(
+                "contract_address: {:x?} {:?} {:?}",
+                contract_address,
+                AsRef::<[u8]>::as_ref(&to).to_vec(),
+                amount.encode()
+            );
 
             let result = <Contracts<T>>::bare_call(
                 source,

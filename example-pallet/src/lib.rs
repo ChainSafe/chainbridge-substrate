@@ -125,6 +125,9 @@ pub mod pallet {
                 <bridge::Module<T>>::chain_whitelisted(dest_id),
                 Error::<T>::InvalidTransfer
             );
+
+            let bridge_id = <bridge::Module<T>>::account_id();
+
             let contract_address = T::ContractAddress::get();
             debug::info!(
                 "contract_address: {:x?} {:?}",
@@ -133,11 +136,12 @@ pub mod pallet {
             );
 
             let result = <Contracts<T>>::bare_call(
-                source,
+                bridge_id,
                 contract_address,
                 0_u32.into(),
                 100_000_000_000,
                 IntoIter::new(BURN_SELECTOR)
+                    .chain(AsRef::<[u8]>::as_ref(&source).to_vec())
                     .chain(amount.encode())
                     .collect(),
             );

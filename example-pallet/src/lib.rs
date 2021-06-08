@@ -22,6 +22,7 @@ mod constants {
         hex!("352e27b91bca40ca114f84c11f443015683cbd19b39107570f1a1992bcc152be");
     /// The selector of the message to call
     pub const MINT_SELECTOR: [u8; 4] = hex!("cfdd9aa2");
+    pub const BURN_SELECTOR: [u8; 4] = hex!("b1efc17b");
 }
 
 type ResourceId = bridge::ResourceId;
@@ -117,13 +118,35 @@ pub mod pallet {
             recipient: Vec<u8>,
             dest_id: bridge::ChainId,
         ) -> DispatchResultWithPostInfo {
+            use constants::*;
+            use core::array::IntoIter;
             let source = ensure_signed(origin)?;
             ensure!(
                 <bridge::Module<T>>::chain_whitelisted(dest_id),
                 Error::<T>::InvalidTransfer
             );
-            let bridge_id = <bridge::Module<T>>::account_id();
-            // T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+            let contract_address = T::ContractAddress::get();
+            debug::info!(
+                "contract_address: {:x?} {:?}",
+                contract_address,
+                amount.encode()
+            );
+
+            let result = <Contracts<T>>::bare_call(
+                source,
+                contract_address,
+                0_u32.into(),
+                100_000_000_000,
+                IntoIter::new(BURN_SELECTOR)
+                    .chain(amount.encode())
+                    .collect(),
+            );
+
+            if let Err(e) = result.exec_result {
+                debug::error!("erc20 contract error: {:?}", e);
+            } else {
+                debug::info!("burn succeeded {:?}", result);
+            }
 
             let resource_id = T::NativeTokenId::get();
             <bridge::Module<T>>::transfer_fungible(
@@ -218,7 +241,7 @@ pub mod pallet {
             if let Err(e) = result.exec_result {
                 debug::error!("erc20 contract error: {:?}", e);
             } else {
-                debug::info!("call succeeded {:?}", result);
+                debug::info!("mint succeeded {:?}", result);
             }
 
             Ok(().into())

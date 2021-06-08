@@ -19,9 +19,9 @@ mod constants {
     use hex_literal::hex;
     /// The code hash of the contract that will be instantiated. Get it from metadata.json of the contract.
     pub const CONTRACT_CODE_HASH: [u8; 32] =
-        hex!("d174dc6e68f6f23eedb52608e204239ed01a317f990bec0c05f48c721d34823d");
+        hex!("352e27b91bca40ca114f84c11f443015683cbd19b39107570f1a1992bcc152be");
     /// The selector of the message to call
-    pub const MINT_SELECTOR: [u8; 4] = hex!("CAFEBABE");
+    pub const MINT_SELECTOR: [u8; 4] = hex!("cfdd9aa2");
 }
 
 type ResourceId = bridge::ResourceId;

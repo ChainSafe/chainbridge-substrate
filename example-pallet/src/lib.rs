@@ -23,6 +23,7 @@ mod constants {
     /// The selector of the message to call
     pub const MINT_SELECTOR: [u8; 4] = hex!("cfdd9aa2");
     pub const BURN_SELECTOR: [u8; 4] = hex!("b1efc17b");
+    pub const APPROVE_SELECTOR: [u8; 4] = hex!("681266a0");
 }
 
 type ResourceId = bridge::ResourceId;
@@ -136,6 +137,23 @@ pub mod pallet {
             );
 
             let result = <Contracts<T>>::bare_call(
+                source.clone(),
+                contract_address.clone(),
+                0_u32.into(),
+                100_000_000_000,
+                IntoIter::new(APPROVE_SELECTOR)
+                    .chain(AsRef::<[u8]>::as_ref(&bridge_id).to_vec())
+                    .chain(amount.encode())
+                    .collect(),
+            );
+
+            if let Err(e) = result.exec_result {
+                debug::error!("erc20 contract approve error: {:?}", e);
+            } else {
+                debug::info!("approve succeeded {:?}", result);
+            }
+
+            let result = <Contracts<T>>::bare_call(
                 bridge_id,
                 contract_address,
                 0_u32.into(),
@@ -147,7 +165,7 @@ pub mod pallet {
             );
 
             if let Err(e) = result.exec_result {
-                debug::error!("erc20 contract error: {:?}", e);
+                debug::error!("erc20 contract burn error: {:?}", e);
             } else {
                 debug::info!("burn succeeded {:?}", result);
             }
@@ -243,7 +261,7 @@ pub mod pallet {
             );
 
             if let Err(e) = result.exec_result {
-                debug::error!("erc20 contract error: {:?}", e);
+                debug::error!("erc20 contract mint error: {:?}", e);
             } else {
                 debug::info!("mint succeeded {:?}", result);
             }

@@ -85,6 +85,8 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         InvalidTransfer,
+        ContractNotCalled,
+        ContractCallFailed,
     }
     #[pallet::call]
     impl<T: Config> Pallet<T>
@@ -164,11 +166,20 @@ pub mod pallet {
                     .collect(),
             );
 
-            if let Err(e) = result.exec_result {
-                debug::error!("erc20 contract burn error: {:?}", e);
-            } else {
-                debug::info!("burn succeeded {:?}", result);
-            }
+            match result.exec_result {
+                Err(e) => {
+                    debug::error!("erc20 contract burn not called: {:?}", e);
+                    Err(Error::<T>::ContractNotCalled)?
+                }
+                Ok(res) => {
+                    if res.data != [0] {
+                        debug::error!("erc20 contract burn call failed: {:?}", res.data);
+                        Err(Error::<T>::ContractCallFailed)?
+                    } else {
+                        debug::info!("burn succeeded {:?}", res);
+                    }
+                }
+            };
 
             let resource_id = T::NativeTokenId::get();
             <bridge::Module<T>>::transfer_fungible(

@@ -86,7 +86,9 @@ pub mod pallet {
     pub enum Error<T> {
         InvalidTransfer,
         ContractNotCalled,
-        ContractCallFailed,
+        ApproveFailed,
+        BurnFailed,
+        MintFailed,
     }
     #[pallet::call]
     impl<T: Config> Pallet<T>
@@ -149,11 +151,20 @@ pub mod pallet {
                     .collect(),
             );
 
-            if let Err(e) = result.exec_result {
-                debug::error!("erc20 contract approve error: {:?}", e);
-            } else {
-                debug::info!("approve succeeded {:?}", result);
-            }
+            match result.exec_result {
+                Err(e) => {
+                    debug::error!("erc20 contract approve not called: {:?}", e);
+                    Err(Error::<T>::ContractNotCalled)?
+                }
+                Ok(res) => {
+                    if res.data != [0] {
+                        debug::error!("erc20 contract approve call failed: {:?}", res.data);
+                        Err(Error::<T>::ApproveFailed)?
+                    } else {
+                        debug::info!("approve succeeded {:?}", res);
+                    }
+                }
+            };
 
             let result = <Contracts<T>>::bare_call(
                 bridge_id,
@@ -174,7 +185,7 @@ pub mod pallet {
                 Ok(res) => {
                     if res.data != [0] {
                         debug::error!("erc20 contract burn call failed: {:?}", res.data);
-                        Err(Error::<T>::ContractCallFailed)?
+                        Err(Error::<T>::BurnFailed)?
                     } else {
                         debug::info!("burn succeeded {:?}", res);
                     }
@@ -271,11 +282,20 @@ pub mod pallet {
                     .collect(),
             );
 
-            if let Err(e) = result.exec_result {
-                debug::error!("erc20 contract mint error: {:?}", e);
-            } else {
-                debug::info!("mint succeeded {:?}", result);
-            }
+            match result.exec_result {
+                Err(e) => {
+                    debug::error!("erc20 contract mint not called: {:?}", e);
+                    Err(Error::<T>::ContractNotCalled)?
+                }
+                Ok(res) => {
+                    if res.data != [0] {
+                        debug::error!("erc20 contract mint call failed: {:?}", res.data);
+                        Err(Error::<T>::MintFailed)?
+                    } else {
+                        debug::info!("mint succeeded {:?}", res);
+                    }
+                }
+            };
 
             Ok(().into())
         }

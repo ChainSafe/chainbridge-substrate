@@ -190,6 +190,7 @@ pub mod pallet {
         
         /// The identifier for this chain.
         /// This must be unique and must not collide with existing IDs within a set of bridged chains.
+        #[pallet::constant]
         type ChainId: Get<ChainId>;
 
         /// Constant configuration parameter to store the module identifier for the pallet.
@@ -496,8 +497,7 @@ pub mod pallet {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-//        #[weight = (call.get_dispatch_info().weight + 195_000_000, call.get_dispatch_info().class, Pays::Yes)]
-        #[pallet::weight(<T as Config>::WeightInfo::acknowledge_proposal())]
+        #[pallet::weight(<T as Config>::WeightInfo::acknowledge_proposal(call.get_dispatch_info().weight))]
         pub fn acknowledge_proposal(
             origin: OriginFor<T>,
             nonce: DepositNonce, 
@@ -542,8 +542,7 @@ pub mod pallet {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-//        #[weight = (prop.get_dispatch_info().weight + 195_000_000, proposal.get_dispatch_info().class, Pays::Yes)]
-        #[pallet::weight(<T as Config>::WeightInfo::eval_vote_state())]
+        #[pallet::weight(<T as Config>::WeightInfo::eval_vote_state(proposal.get_dispatch_info().weight))]
         pub fn eval_vote_state(
             origin: OriginFor<T>,
             nonce: DepositNonce, 

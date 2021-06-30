@@ -50,17 +50,15 @@ impl WeightInfo for () {
         195_000_000 as Weight
     }
 
-    // #[weight = (call.get_dispatch_info().weight + 195_000_000, call.get_dispatch_info().class, Pays::Yes)]
-    fn acknowledge_proposal() -> Weight {
-        195_000_000 as Weight
+    fn acknowledge_proposal(dispatch_weight: Weight) -> Weight {
+        (195_000_000 as Weight).saturating_add(dispatch_weight)
     }
 
     fn reject_proposal() -> Weight {
         195_000_000 as Weight
     }
 
-    // #[weight = (prop.get_dispatch_info().weight + 195_000_000, prop.get_dispatch_info().class, Pays::Yes)]
-    fn eval_vote_state() -> Weight {
-        195_000_000 as Weight
+    fn eval_vote_state(dispatch_weight: Weight) -> Weight {
+        (195_000_000 as Weight).saturating_add(dispatch_weight)
     }
 }

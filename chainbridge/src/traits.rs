@@ -44,9 +44,9 @@ pub trait WeightInfo {
 
     fn remove_relayer() -> Weight;
 
-    fn acknowledge_proposal() -> Weight;
+    fn acknowledge_proposal(dispatch_weight: Weight) -> Weight;
 
     fn reject_proposal() -> Weight;
 
-    fn eval_vote_state() -> Weight;
+    fn eval_vote_state(dispatch_weight: Weight) -> Weight;
 }

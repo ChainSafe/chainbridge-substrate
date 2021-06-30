@@ -39,15 +39,19 @@ use sp_runtime::{
 };
 
 use crate::{
-    self as pallet_chainbridge,
-    traits::WeightInfo,
-    types::ResourceId,
+    self as pallet_chainbridge, 
+    traits::WeightInfo, 
+    types::{
+        ChainId, 
+        ResourceId
+    }
 };
 
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
 // ----------------------------------------------------------------------------
+
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -83,8 +87,7 @@ impl WeightInfo for MockWeightInfo {
         0 as Weight
     }
 
-    // #[weight = (call.get_dispatch_info().weight + 195_000_000, call.get_dispatch_info().class, Pays::Yes)]
-    fn acknowledge_proposal() -> Weight {
+    fn acknowledge_proposal(_: Weight) -> Weight {
         0 as Weight
     }
 
@@ -92,14 +95,12 @@ impl WeightInfo for MockWeightInfo {
         0 as Weight
     }
 
-    // #[weight = (prop.get_dispatch_info().weight + 195_000_000, prop.get_dispatch_info().class, Pays::Yes)]
-    fn eval_vote_state() -> Weight {
+    fn eval_vote_state(_: Weight) -> Weight {
         0 as Weight
     }
 }
 
 // Constants definition
-pub const BRIDGE_ID: u64 = 5;
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
@@ -119,9 +120,9 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Pallet, Call, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Config, Event<T>},
     }
 );
 
@@ -190,7 +191,7 @@ impl pallet_balances::Config for MockRuntime {
 
 // Parameterize chain bridge pallet
 parameter_types! {
-    pub const ChainId: u8 = 5;
+    pub const MockChainId: ChainId = 5;
     pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
     pub const ProposalLifetime: u64 = 10;
 }
@@ -199,7 +200,7 @@ parameter_types! {
 impl pallet_chainbridge::Config for MockRuntime {
     type Event = Event;
     type Proposal = Call;
-    type ChainId = ChainId;
+    type ChainId = MockChainId;
     type PalletId = ChainBridgePalletId;
     type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
     type ProposalLifetime = ProposalLifetime;
@@ -229,7 +230,7 @@ impl TestExternalitiesBuilder {
     // Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
 
-        let bridge_id = ChainBridge::PalletId::get().into_account();
+        let bridge_id = ChainBridge::account_id();
 
 		let mut storage = frame_system::GenesisConfig::default()
             .build_storage::<MockRuntime>()
@@ -272,6 +273,11 @@ impl TestExternalitiesBuilder {
         externalities
     }
 }
+
+
+// ----------------------------------------------------------------------------
+// Helper functions
+// ----------------------------------------------------------------------------
 
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.

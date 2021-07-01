@@ -2,18 +2,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use chainbridge as bridge;
+use codec::{Decode, Encode};
 use example_erc721 as erc721;
-use frame_support::ensure;
 use frame_support::traits::{Currency, EnsureOrigin, Get};
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 use pallet_contracts::Pallet as Contracts;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::crypto::UncheckedFrom;
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_std::prelude::*;
 
 mod mock;
 mod tests;
+
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, Default, RuntimeDebug)]
+pub struct InkContractHash([u8; 32]);
 
 mod constants {
     use hex_literal::hex;
@@ -41,6 +45,10 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::storage]
+    #[pallet::getter(fn address_mapping)]
+    pub type AddressMapping<T: Config> = StorageMap<_, Blake2_128Concat, H160, InkContractHash>;
 
     #[pallet::config]
     pub trait Config:
@@ -89,6 +97,8 @@ pub mod pallet {
         ApproveFailed,
         BurnFailed,
         MintFailed,
+        AddressMappingNotFound,
+        AddressMappingAlreadyExisted,
     }
     #[pallet::call]
     impl<T: Config> Pallet<T>
@@ -119,6 +129,7 @@ pub mod pallet {
         #[pallet::weight(195_000_000)]
         pub fn transfer_native(
             origin: OriginFor<T>,
+            token_addr: H160,
             amount: BalanceOf<T>,
             recipient: Vec<u8>,
             dest_id: bridge::ChainId,
@@ -131,9 +142,22 @@ pub mod pallet {
                 Error::<T>::InvalidTransfer
             );
 
+            ensure!(
+                !AddressMapping::<T>::contains_key(token_addr.clone()),
+                Error::<T>::AddressMappingNotFound
+            );
+
             let bridge_id = <bridge::Module<T>>::account_id();
 
-            let contract_address = T::ContractAddress::get();
+            let contract_code_hash =
+                AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
+
+            let mut code_hash = T::Hash::default();
+            code_hash.as_mut().copy_from_slice(&contract_code_hash.0);
+
+            let contract_address =
+                <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
+
             debug::info!(
                 "contract_address: {:x?} {:?}",
                 contract_address,
@@ -168,7 +192,7 @@ pub mod pallet {
 
             let result = <Contracts<T>>::bare_call(
                 bridge_id,
-                contract_address,
+                contract_address.clone(),
                 0_u32.into(),
                 100_000_000_000,
                 IntoIter::new(BURN_SELECTOR)
@@ -243,6 +267,7 @@ pub mod pallet {
         pub fn transfer(
             origin: OriginFor<T>,
             to: T::AccountId,
+            token_addr: H160,
             amount: BalanceOf<T>,
             r_id: ResourceId,
         ) -> DispatchResultWithPostInfo {
@@ -323,6 +348,53 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             T::BridgeOrigin::ensure_origin(origin)?;
             <erc721::Module<T>>::mint_token(recipient, id, metadata)?;
+            Ok(().into())
+        }
+
+        /// Add new token address pair
+        #[pallet::weight(195_000_000)]
+        pub fn add_address_mapping(
+            origin: OriginFor<T>,
+            eth_token_addr: H160,
+            ink_contract_hash: InkContractHash,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                !!AddressMapping::<T>::contains_key(&eth_token_addr),
+                Error::<T>::AddressMappingAlreadyExisted
+            );
+            AddressMapping::<T>::insert(&eth_token_addr, ink_contract_hash);
+            Ok(().into())
+        }
+
+        /// Update new token address pair
+        #[pallet::weight(195_000_000)]
+        pub fn update_address_mapping(
+            origin: OriginFor<T>,
+            eth_token_addr: H160,
+            ink_contract_hash: InkContractHash,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                !AddressMapping::<T>::contains_key(&eth_token_addr),
+                Error::<T>::AddressMappingNotFound
+            );
+            AddressMapping::<T>::insert(&eth_token_addr, ink_contract_hash);
+            Ok(().into())
+        }
+
+        /// Remove new token address pair
+        #[pallet::weight(195_000_000)]
+        pub fn remove_address_mapping(
+            origin: OriginFor<T>,
+            eth_token_addr: H160,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                !AddressMapping::<T>::contains_key(&eth_token_addr),
+                Error::<T>::AddressMappingNotFound
+            );
+            AddressMapping::<T>::remove(&eth_token_addr);
             Ok(().into())
         }
     }

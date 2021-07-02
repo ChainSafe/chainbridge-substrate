@@ -38,7 +38,6 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use hex_literal::hex;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -67,7 +66,6 @@ pub mod pallet {
         type NativeTokenId: Get<ResourceId>;
         type Erc721Id: Get<ResourceId>;
         type Deployer: Get<Self::AccountId>;
-        type ContractAddress: Get<Self::AccountId>;
     }
 
     #[pallet::hooks]

@@ -285,8 +285,6 @@ pub mod pallet {
                 Error::<T>::AddressMappingNotFound
             );
 
-            let bridge_id = <bridge::Module<T>>::account_id();
-
             let contract_code_hash =
                 AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
 
@@ -299,8 +297,9 @@ pub mod pallet {
                 &contract_code_hash.1,
             );
             debug::info!(
-                "erc20 contract address: {:x?} {:?}",
+                "erc20 contract address: {:x?} {:?} {:?}",
                 contract_address,
+                token_addr,
                 contract_code_hash
             );
 

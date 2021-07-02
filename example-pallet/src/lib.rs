@@ -280,21 +280,28 @@ pub mod pallet {
             // Retrieve sender of the transaction.
             // let who = ensure_signed(origin)?;
 
-            // // convert the code hash to `Hash` type
-            // // TODO: This should be moved to the genesis config I think?
+            ensure!(
+                !AddressMapping::<T>::contains_key(token_addr.clone()),
+                Error::<T>::AddressMappingNotFound
+            );
+
+            let bridge_id = <bridge::Module<T>>::account_id();
+
+            let contract_code_hash =
+                AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
+
             let mut code_hash = T::Hash::default();
-            code_hash.as_mut().copy_from_slice(&CONTRACT_CODE_HASH);
+            code_hash.as_mut().copy_from_slice(&contract_code_hash.0);
 
-            // // generate the address for the contract
-            // let contract_address =
-            //     <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &[]);
-
-            let contract_address = T::ContractAddress::get();
+            let contract_address = <Contracts<T>>::contract_address(
+                &T::Deployer::get(),
+                &code_hash,
+                &contract_code_hash.1,
+            );
             debug::info!(
-                "contract_address: {:x?} {:?} {:?}",
+                "erc20 contract address: {:x?} {:?}",
                 contract_address,
-                AsRef::<[u8]>::as_ref(&to).to_vec(),
-                amount.encode()
+                contract_code_hash
             );
 
             let result = <Contracts<T>>::bare_call(

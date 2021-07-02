@@ -286,29 +286,31 @@ pub mod pallet {
                 Error::<T>::AddressMappingNotFound
             );
 
-            let contract_code_hash =
-                AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
+            let contract_info = AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
 
             let mut code_hash = T::Hash::default();
-            code_hash.as_mut().copy_from_slice(&contract_code_hash.0);
+            code_hash.as_mut().copy_from_slice(&hex!(
+                "8994de13e46db7f590936d5957644650c64d670c48d50d479887669004e158d9"
+            ));
 
             let contract_address = <Contracts<T>>::contract_address(
                 &T::Deployer::get(),
                 &code_hash,
-                &contract_code_hash.1,
+                &hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
             );
             debug::info!(
-                "erc20 contract address: {:x?} {:?} {:?}",
+                "erc20 contract address: {:x?} {:?} {:x?} {:x?}",
                 contract_address,
                 token_addr,
-                contract_code_hash
+                contract_info.0,
+                contract_info.1
             );
 
             assert_eq!(
                 hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
                 [
-                    137, 148, 222, 19, 228, 109, 183, 245, 144, 147, 109, 89, 87, 100, 70, 80, 198,
-                    77, 103, 12, 72, 213, 13, 71, 152, 135, 102, 144, 4, 225, 88, 217
+                    135, 173, 143, 207, 226, 41, 231, 144, 27, 113, 168, 73, 113, 176, 124, 109,
+                    233, 53, 1, 223, 252, 233, 154, 11, 180, 172, 121, 255, 50, 186, 62, 97
                 ]
             );
 

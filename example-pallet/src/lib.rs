@@ -18,9 +18,6 @@ mod tests;
 
 mod constants {
     use hex_literal::hex;
-    /// The code hash of the contract that will be instantiated. Get it from metadata.json of the contract.
-    pub const CONTRACT_CODE_HASH: [u8; 32] =
-        hex!("352e27b91bca40ca114f84c11f443015683cbd19b39107570f1a1992bcc152be");
     /// The selector of the message to call
     pub const MINT_SELECTOR: [u8; 4] = hex!("cfdd9aa2");
     pub const BURN_SELECTOR: [u8; 4] = hex!("27212bbb");

@@ -141,7 +141,7 @@ pub mod pallet {
             );
 
             ensure!(
-                !AddressMapping::<T>::contains_key(token_addr.clone()),
+                AddressMapping::<T>::contains_key(token_addr.clone()),
                 Error::<T>::AddressMappingNotFound
             );
 
@@ -281,7 +281,7 @@ pub mod pallet {
             // let who = ensure_signed(origin)?;
 
             ensure!(
-                !AddressMapping::<T>::contains_key(token_addr.clone()),
+                AddressMapping::<T>::contains_key(token_addr.clone()),
                 Error::<T>::AddressMappingNotFound
             );
 
@@ -368,7 +368,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(
-                !!AddressMapping::<T>::contains_key(&eth_token_addr),
+                !AddressMapping::<T>::contains_key(&eth_token_addr),
                 Error::<T>::AddressMappingAlreadyExisted
             );
             AddressMapping::<T>::insert(&eth_token_addr, (ink_contract_hash, ink_contract_salt));
@@ -385,7 +385,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(
-                !AddressMapping::<T>::contains_key(&eth_token_addr),
+                AddressMapping::<T>::contains_key(&eth_token_addr),
                 Error::<T>::AddressMappingNotFound
             );
             AddressMapping::<T>::insert(&eth_token_addr, (ink_contract_hash, ink_contract_salt));
@@ -400,7 +400,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(
-                !AddressMapping::<T>::contains_key(&eth_token_addr),
+                AddressMapping::<T>::contains_key(&eth_token_addr),
                 Error::<T>::AddressMappingNotFound
             );
             AddressMapping::<T>::remove(&eth_token_addr);

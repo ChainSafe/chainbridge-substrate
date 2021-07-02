@@ -148,17 +148,13 @@ pub mod pallet {
 
             let bridge_id = <bridge::Module<T>>::account_id();
 
-            let contract_code_hash =
-                AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
+            let contract_info = AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
 
             let mut code_hash = T::Hash::default();
-            code_hash.as_mut().copy_from_slice(&contract_code_hash.0);
+            code_hash.as_mut().copy_from_slice(&contract_info.0);
 
-            let contract_address = <Contracts<T>>::contract_address(
-                &T::Deployer::get(),
-                &code_hash,
-                &contract_code_hash.1,
-            );
+            let contract_address =
+                <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &contract_info.1);
 
             debug::info!(
                 "contract_address: {:x?} {:?}",
@@ -289,29 +285,16 @@ pub mod pallet {
             let contract_info = AddressMapping::<T>::get(token_addr.clone()).unwrap_or_default();
 
             let mut code_hash = T::Hash::default();
-            code_hash.as_mut().copy_from_slice(&hex!(
-                "8994de13e46db7f590936d5957644650c64d670c48d50d479887669004e158d9"
-            ));
+            code_hash.as_mut().copy_from_slice(&contract_info.0);
 
-            let contract_address = <Contracts<T>>::contract_address(
-                &T::Deployer::get(),
-                &code_hash,
-                &hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
-            );
+            let contract_address =
+                <Contracts<T>>::contract_address(&T::Deployer::get(), &code_hash, &contract_info.1);
             debug::info!(
                 "erc20 contract address: {:x?} {:?} {:?} {:?}",
                 contract_address,
                 token_addr,
                 contract_info.0,
                 contract_info.1
-            );
-
-            assert_eq!(
-                hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
-                [
-                    135, 173, 143, 207, 226, 41, 231, 144, 27, 113, 168, 73, 113, 176, 124, 109,
-                    233, 53, 1, 223, 252, 233, 154, 11, 180, 172, 121, 255, 50, 186, 62, 97
-                ]
             );
 
             let result = <Contracts<T>>::bare_call(

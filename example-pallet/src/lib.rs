@@ -299,7 +299,7 @@ pub mod pallet {
                 &hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
             );
             debug::info!(
-                "erc20 contract address: {:x?} {:?} {:x?} {:x?}",
+                "erc20 contract address: {:x?} {:?} {:?} {:?}",
                 contract_address,
                 token_addr,
                 contract_info.0,

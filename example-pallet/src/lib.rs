@@ -38,6 +38,7 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -283,6 +284,14 @@ pub mod pallet {
             ensure!(
                 AddressMapping::<T>::contains_key(token_addr.clone()),
                 Error::<T>::AddressMappingNotFound
+            );
+
+            assert_eq!(
+                hex!("87ad8fcfe229e7901b71a84971b07c6de93501dffce99a0bb4ac79ff32ba3e61"),
+                [
+                    137, 148, 222, 19, 228, 109, 183, 245, 144, 147, 109, 89, 87, 100, 70, 80, 198,
+                    77, 103, 12, 72, 213, 13, 71, 152, 135, 102, 144, 4, 225, 88, 217
+                ]
             );
 
             let contract_code_hash =

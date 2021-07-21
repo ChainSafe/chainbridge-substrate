@@ -1,4 +1,3 @@
-
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 

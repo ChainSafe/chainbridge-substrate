@@ -18,7 +18,7 @@ jobs:
       - name: Install latest nightly Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2021-03-18
           target: ${{ matrix.target }}
           override: true
       - name: Build chainbridge Rust crate
@@ -41,7 +41,7 @@ jobs:
       - name: Install latest nightly Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2021-03-18
           target: ${{ matrix.target }}
           override: true
       - name: Build Rust create
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2021-03-18
           target: ${{ matrix.target }}
           components: rustfmt
           override: true

@@ -21,7 +21,13 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use frame_support::{PalletId, assert_ok, parameter_types, traits::SortedMembers, weights::Weight};
+use frame_support::{
+    assert_ok, 
+    PalletId, 
+    parameter_types, 
+    traits::SortedMembers, 
+    weights::Weight
+};
 
 use frame_system::EnsureSignedBy;
 
@@ -55,9 +61,6 @@ use crate::{
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
-// TODO [ToZ] - Old type aliases
-//pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-//pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
 // Implement testing extrinsic weights for the pallet
 pub struct MockWeightInfo;
@@ -189,14 +192,14 @@ impl pallet_balances::Config for MockRuntime {
     type MaxLocks = ();
 }
 
-// Parameterize chain bridge pallet
+// Parameterize chainbridge pallet
 parameter_types! {
     pub const MockChainId: ChainId = 5;
     pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
     pub const ProposalLifetime: u64 = 10;
 }
 
-// Implement chain bridge pallet configuration trait for the mock runtime
+// Implement chainbridge pallet configuration trait for the mock runtime
 impl pallet_chainbridge::Config for MockRuntime {
     type Event = Event;
     type Proposal = Call;

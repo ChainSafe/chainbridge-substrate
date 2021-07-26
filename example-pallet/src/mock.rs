@@ -1,21 +1,131 @@
-#![cfg(test)]
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
 
-use super::*;
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
 
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
-use frame_system::{self as system};
-use sp_core::hashing::blake2_128;
-use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-    ModuleId, Perbill,
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! Mocking runtime for testing chainbridge's example pallet.
+//!
+//! The main components implemented in this mock module is a mock runtime
+//! and some helper functions.
+
+
+// ----------------------------------------------------------------------------
+// Module imports and re-exports
+// ----------------------------------------------------------------------------
+
+use frame_support::{PalletId, parameter_types, traits::SortedMembers, weights::Weight};
+
+use frame_system::EnsureRoot;
+use sp_core::{
+    hashing::blake2_128,
+    H256,
 };
 
-use crate::{self as example, Config};
-use chainbridge as bridge;
-pub use pallet_balances as balances;
+use sp_io::TestExternalities;
+use sp_runtime::{
+    testing::Header,
+    traits::{
+        BlakeTwo256, 
+        IdentityLookup,
+    },
+    Perbill,
+};
 
+use chainbridge::types::{
+    ChainId,
+    ResourceId,
+};
+
+use crate::{
+    self as pallet_example,
+    traits::WeightInfo,
+};
+
+
+// ----------------------------------------------------------------------------
+// Types and constants declaration
+// ----------------------------------------------------------------------------
+
+type Balance = u64;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
+type Block = frame_system::mocking::MockBlock<MockRuntime>;
+// Implement testing extrinsic weights for the pallet
+pub struct MockWeightInfo;
+impl WeightInfo for MockWeightInfo {
+
+
+    fn transfer_hash() -> Weight {
+        0 as Weight
+    }
+
+    fn transfer_native() -> Weight {
+        0 as Weight
+    }
+    
+    fn transfer_erc721() -> Weight {
+        0 as Weight
+    }
+
+    fn transfer() -> Weight {
+        0 as Weight    
+    }
+
+    fn remark() -> Weight {
+        0 as Weight
+    }
+
+    fn mint_erc721() -> Weight {
+        0 as Weight
+    }
+}
+
+pub(crate) const RELAYER_A: u64 = 0x2;
+pub(crate) const RELAYER_B: u64 = 0x3;
+pub(crate) const RELAYER_C: u64 = 0x4;
+pub(crate) const ENDOWED_BALANCE: u64 = 100_000_000;
+pub(crate) const TEST_THRESHOLD: u32 = 2;
+
+
+// ----------------------------------------------------------------------------
+// Mock runtime configuration
+// ----------------------------------------------------------------------------
+
+// Build mock runtime
+frame_support::construct_runtime!(
+
+    pub enum MockRuntime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic
+    {
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ChainBridge: chainbridge::{Pallet, Call, Storage, Config, Event<T>},
+        Erc721: pallet_example_erc721::{Pallet, Call, Storage, Event<T>},
+        Example: pallet_example::{Pallet, Call, Event<T>}
+    }
+);
+
+// Parameterize default test user identifier (with id 1)
+parameter_types! {
+    pub const TestUserId: u64 = 1;
+}
+
+impl SortedMembers<u64> for TestUserId{
+    fn sorted_members() -> Vec<u64> {
+        vec![1]
+    }
+}
+
+// Parameterize FRAME system pallet
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -24,7 +134,8 @@ parameter_types! {
     pub const MaxLocks: u32 = 100;
 }
 
-impl frame_system::Config for Test {
+// Implement FRAME system pallet configuration trait for the mock runtime
+impl frame_system::Config for MockRuntime {
     type BaseCallFilter = ();
     type Origin = Origin;
     type Call = Call;
@@ -47,98 +158,118 @@ impl frame_system::Config for Test {
     type BlockWeights = ();
     type BlockLength = ();
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
+// Parameterize FRAME balances pallet
 parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
 }
 
-ord_parameter_types! {
-    pub const One: u64 = 1;
-}
-
-impl pallet_balances::Config for Test {
-    type Balance = u64;
+// Implement FRAME balances pallet configuration trait for the mock runtime
+impl pallet_balances::Config for MockRuntime {
+    type Balance = Balance;
     type DustRemoval = ();
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
-    type MaxLocks = MaxLocks;
+    type WeightInfo = ();
+    type MaxLocks = ();
+}
+
+// Parameterize chainbridge pallet
+parameter_types! {
+    pub const MockChainId: ChainId = 5;
+    pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+    pub const ProposalLifetime: u64 = 10;
+}
+
+// Implement chainbridge pallet configuration trait for the mock runtime
+impl chainbridge::Config for MockRuntime {
+    type Event = Event;
+    type Proposal = Call;
+    type ChainId = MockChainId;
+    type PalletId = ChainBridgePalletId;
+    type AdminOrigin = EnsureRoot<Self::AccountId>;
+    type ProposalLifetime = ProposalLifetime;
     type WeightInfo = ();
 }
 
+// Parameterize ERC721 and example pallets
 parameter_types! {
-    pub const TestChainId: u8 = 5;
-    pub const ProposalLifetime: u64 = 100;
+    pub HashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"DAV"));
+    pub Erc721Id: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"NFT"));
 }
 
-impl bridge::Config for Test {
-    type Event = Event;
-    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type Proposal = Call;
-    type ChainId = TestChainId;
-    type ProposalLifetime = ProposalLifetime;
-}
-
-parameter_types! {
-    pub HashId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"hash"));
-    pub NativeTokenId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"DAV"));
-    pub Erc721Id: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"NFT"));
-}
-
-impl erc721::Config for Test {
+// Implement ERC721 pallet configuration trait for the mock runtime
+impl pallet_example_erc721::Config for MockRuntime {
     type Event = Event;
     type Identifier = Erc721Id;
+    type WeightInfo = ();
 }
 
-impl Config for Test {
+// Implement example pallet configuration trait for the mock runtime
+impl pallet_example::Config for MockRuntime {
     type Event = Event;
-    type BridgeOrigin = bridge::EnsureBridge<Test>;
+    type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
     type Currency = Balances;
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
     type Erc721Id = Erc721Id;
+    type WeightInfo = MockWeightInfo;
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
-frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
-        System: system::{Module, Call, Event<T>},
-        Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Storage, Event<T>},
-        Erc721: erc721::{Module, Call, Storage, Event<T>},
-        Example: example::{Module, Call, Event<T>}
-    }
-);
+// ----------------------------------------------------------------------------
+// Test externalities
+// ----------------------------------------------------------------------------
 
-pub const RELAYER_A: u64 = 0x2;
-pub const RELAYER_B: u64 = 0x3;
-pub const RELAYER_C: u64 = 0x4;
-pub const ENDOWED_BALANCE: u64 = 100_000_000;
+// Test externalities builder type declaraction.
+//
+// This type is mainly used for mocking storage in tests. It is the type alias 
+// for an in-memory, hashmap-based externalities implementation.
+pub struct TestExternalitiesBuilder {}
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = ModuleId(*b"cb/bridg").into_account();
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
-        .unwrap();
-    pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
-    }
-    .assimilate_storage(&mut t)
-    .unwrap();
-    let mut ext = sp_io::TestExternalities::new(t);
-    ext.execute_with(|| System::set_block_number(1));
-    ext
+// Default trait implementation for test externalities builder
+impl Default for TestExternalitiesBuilder {
+	fn default() -> Self {
+		Self {}
+	}
 }
+
+impl TestExternalitiesBuilder {
+
+    // Build a genesis storage key/value store
+	pub(crate) fn build(self) -> TestExternalities {
+
+        let bridge_id = ChainBridge::account_id();
+
+		let mut storage = frame_system::GenesisConfig::default()
+            .build_storage::<MockRuntime>()
+            .unwrap();
+
+        // pre-fill balances
+        pallet_balances::GenesisConfig::<MockRuntime> {
+            balances: vec![
+                (bridge_id, ENDOWED_BALANCE),
+                (RELAYER_A, ENDOWED_BALANCE)
+            ],
+        }.assimilate_storage(&mut storage).unwrap();
+
+        let mut externalities = TestExternalities::new(storage);
+        externalities.execute_with(|| System::set_block_number(1));
+        externalities
+    }
+}
+
+
+// ----------------------------------------------------------------------------
+// Helper functions
+// ----------------------------------------------------------------------------
 
 fn last_event() -> Event {
-    system::Module::<Test>::events()
+    frame_system::Pallet::<MockRuntime>::events()
         .pop()
         .map(|e| e.event)
         .expect("Event expected")
@@ -150,7 +281,7 @@ pub fn expect_event<E: Into<Event>>(e: E) {
 
 // Asserts that the event was emitted at some point.
 pub fn event_exists<E: Into<Event>>(e: E) {
-    let actual: Vec<Event> = system::Module::<Test>::events()
+    let actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
@@ -168,7 +299,7 @@ pub fn event_exists<E: Into<Event>>(e: E) {
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Module::<Test>::events()
+    let mut actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();

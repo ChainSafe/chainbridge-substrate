@@ -1,5 +1,5 @@
 [package]
-name = 'example-pallet'
+name = 'pallet-example'
 version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'
@@ -10,24 +10,26 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 serde = { version = "1.0.101", optional = true }
 
 # primitives
-sp-std = { version = "3.0.0", default-features = false }
-sp-runtime = { version = "3.0.0", default-features = false }
-sp-io = { version = "3.0.0", default-features = false }
-sp-core = { version = "3.0.0", default-features = false }
-sp-arithmetic = { version = "3.0.0", default-features = false }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+sp-arithmetic = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # frame dependencies
-frame-support = { version = "3.0.0", default-features = false }
-frame-system = { version = "3.0.0", default-features = false }
+frame-support = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
 
+# local dependencies
 chainbridge = { path = "../chainbridge" , default-features = false}
-example-erc721 = { path = "../example-erc721", default-features = false }
+pallet-example-erc721 = { path = "../example-erc721", default-features = false }
 
 [dev-dependencies]
-pallet-balances = { version = "3.0.0", default-features = false }
+pallet-balances = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
 
 [build-dependencies]
-wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner" }
+wasm-builder-runner = { version = "3.0.0", package = "substrate-wasm-builder-runner"}
+
 [features]
 default = ["std"]
 std = [
@@ -41,5 +43,5 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"chainbridge/std",
-    "example-erc721/std"
+    "pallet-example-erc721/std"
 ]

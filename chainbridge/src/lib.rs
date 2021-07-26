@@ -84,7 +84,7 @@ mod mock;
 mod tests;
 
 // Pallet types and traits
-mod types;
+pub mod types;
 mod traits;
 
 // Pallet extrinsics weight information
@@ -262,7 +262,7 @@ pub mod pallet {
         OptionQuery
     >;
 
-    // Default relayer threshold value for [`RelayerThreshold`] storage item
+    // Default (or initial) value for [`RelayerThreshold`] storage item
 	#[pallet::type_value]
 	pub fn OnRelayerThresholdEmpty<T: Config>() -> u32 {
 		DEFAULT_RELAYER_THRESHOLD
@@ -406,7 +406,7 @@ pub mod pallet {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::set_threshold())]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_threshold())]
         pub fn set_threshold(
             origin: OriginFor<T>,
             threshold: u32
@@ -420,7 +420,7 @@ pub mod pallet {
         /// # <weight>
         /// - O(1) write
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::set_resource())]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_resource())]
         pub fn set_resource(
             origin: OriginFor<T>,
             id: ResourceId, 
@@ -452,7 +452,7 @@ pub mod pallet {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::whitelist_chain())]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist_chain())]
         pub fn whitelist_chain(
             origin: OriginFor<T>,
             id: ChainId
@@ -480,7 +480,7 @@ pub mod pallet {
         /// # <weight>
         /// - O(1) lookup and removal
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::remove_relayer())]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::remove_relayer())]
         pub fn remove_relayer(
             origin: OriginFor<T>,
             account_id: T::AccountId
@@ -497,7 +497,7 @@ pub mod pallet {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::acknowledge_proposal(call.get_dispatch_info().weight))]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::acknowledge_proposal(call.get_dispatch_info().weight))]
         pub fn acknowledge_proposal(
             origin: OriginFor<T>,
             nonce: DepositNonce, 
@@ -518,7 +518,7 @@ pub mod pallet {
         /// # <weight>
         /// - Fixed, since execution of proposal should not be included
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::reject_proposal())]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::reject_proposal())]
         pub fn reject_proposal(
             origin: OriginFor<T>,
             nonce: DepositNonce, 
@@ -542,7 +542,7 @@ pub mod pallet {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::eval_vote_state(proposal.get_dispatch_info().weight))]
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::eval_vote_state(proposal.get_dispatch_info().weight))]
         pub fn eval_vote_state(
             origin: OriginFor<T>,
             nonce: DepositNonce, 
@@ -820,7 +820,7 @@ impl<T: Config> Pallet<T> {
     pub fn transfer_generic(
         dest_id: ChainId,
         resource_id: ResourceId,
-        metadata: Vec<u8>,
+        metadata: Vec<u8>
     ) -> DispatchResult {
         ensure!(
             Self::chain_whitelisted(dest_id),

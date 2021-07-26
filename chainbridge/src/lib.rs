@@ -1,8 +1,99 @@
-// Ensure we're `no_std` when compiling for Wasm.
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! # Pallet for bridging Polkadot Substrate and Ethereum chains.
+//!
+//! This pallet implement a general-purpose bridge to pass arbitrary messages 
+//! Polkadot Substrate Chain and Ethereum or any other target network.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+//!
+//! ## Overview
+//! This pallet is used for bridging chains.
+//!
+//! ## Terminology
+//! 
+//! ## Usage
+//!
+//! ## Interface
+//!
+//! ### Supported Origins
+//!
+//! Signed origin is valid.
+//!
+//! ### Types
+//!
+//! ### Events
+//!
+//!
+//! ### Errors
+//!
+//! ### Dispatchable Functions
+//!
+//! Callable functions (or extrinsics), also considered as transactions, materialize the
+//! pallet contract. Here's the callable functions implemented in this module:
+//!
+//! 
+//! ### Public Functions
+//!
+//! ## Genesis Configuration
+//! This pallet depends on the [`GenesisConfig`]. The following fields are added to
+//! the genesis configuration, that are not associated with specific storage values:
+//!
+//! ## Related Pallets
+//! This pallet is tightly coupled to the following pallets:
+//! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
+//! - Centrifuge Chain [`bridge` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/bridge).
+//! - Centrifuge Chain [`bridge_mapping` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/bridge-mapping).
+//!
+//! ## References
+//! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
+//! 
+//! ## Credits
+//! The Centrifugians Tribe <tribe@centrifuge.io>
+//!
+//! ## License
+//! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
+
+
+// Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+
+// ----------------------------------------------------------------------------
+// Module imports and re-exports
+// ----------------------------------------------------------------------------
+
+// Mock runtime and unit test cases
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+// Pallet types and traits
+pub mod types;
+mod traits;
+
+// Pallet extrinsics weight information
+mod weights;
+
+// Substrate primitives
+use codec::EncodeLike;
+
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
     PalletId,
@@ -10,124 +101,131 @@ use frame_support::{
         EnsureOrigin, 
         Get,
     },
-    weights::{
-        GetDispatchInfo, 
-        Pays,
-    },
+    weights::GetDispatchInfo,
     Parameter,
 };
 
+use frame_system::{
+    ensure_root, 
+    ensure_signed
+};
 
-use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
-use sp_runtime::traits::{AccountIdConversion, Dispatchable};
-use sp_runtime::RuntimeDebug;
+
+use sp_runtime::traits::{
+    AccountIdConversion, 
+    Dispatchable
+};
+
 use sp_std::prelude::*;
 
-use codec::{Decode, Encode, EncodeLike};
+use crate::{
+    traits::WeightInfo,
+    types::{
+        ChainId, 
+        DepositNonce,
+        ProposalStatus,
+        ProposalVotes,
+        ResourceId,
+    }
+};
 
-mod mock;
-mod tests;
+// Re-export pallet components in crate namespace (for runtime construction)
+pub use pallet::*;
+
+
+// ----------------------------------------------------------------------------
+// Constants definition
+// ----------------------------------------------------------------------------
 
 const DEFAULT_RELAYER_THRESHOLD: u32 = 1;
-const MODULE_ID: PalletId = PalletId(*b"cb/bridg");
 
-pub type ChainId = u8;
-pub type DepositNonce = u64;
-pub type ResourceId = [u8; 32];
 
-/// Helper function to concatenate a chain ID and some bytes to produce a resource ID.
-/// The common format is (31 bytes unique ID + 1 byte chain ID).
-pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
-    let mut r_id: ResourceId = [0; 32];
-    r_id[31] = chain; // last byte is chain id
-    let range = if id.len() > 31 { 31 } else { id.len() }; // Use at most 31 bytes
-    for i in 0..range {
-        r_id[30 - i] = id[range - 1 - i]; // Ensure left padding for eth compatibility
+// ----------------------------------------------------------------------------
+// Pallet module
+// ----------------------------------------------------------------------------
+
+// Chain bridge pallet module
+//
+// The name of the pallet is provided by `construct_runtime` and is used as
+// the unique identifier for the pallet's storage. It is not defined in the 
+// pallet itself.
+#[frame_support::pallet]
+pub mod pallet {
+
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    // Bridge pallet type declaration.
+    //
+    // This structure is a placeholder for traits and functions implementation
+    // for the pallet.
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(_);
+
+
+    // ------------------------------------------------------------------------
+    // Pallet configuration
+    // ------------------------------------------------------------------------
+
+    /// Chain bridge pallet's configuration trait.
+    ///
+    /// Associated types and constants are declared in this trait. If the pallet
+    /// depends on other super-traits, the latter must be added to this trait, 
+    /// such as, in this case, [`chainbridge::Config`] super-trait, for instance. 
+    /// Note that [`frame_system::Config`] must always be included.
+    #[pallet::config]
+    pub trait Config: frame_system::Config {
+
+        /// Associated type for Event enum
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        /// Origin used to administer the pallet
+        type AdminOrigin: EnsureOrigin<Self::Origin>;
+        
+        /// Proposed dispatchable call
+        type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
+        
+        /// The identifier for this chain.
+        /// This must be unique and must not collide with existing IDs within a set of bridged chains.
+        #[pallet::constant]
+        type ChainId: Get<ChainId>;
+
+        /// Constant configuration parameter to store the module identifier for the pallet.
+        ///
+        /// The module identifier may be of the form ```PalletId(*b"chnbrdge")``` and set
+        /// using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types) 
+        // macro in the [`runtime/lib.rs`] file.
+        #[pallet::constant]
+        type PalletId: Get<PalletId>;
+
+        #[pallet::constant]
+        type ProposalLifetime: Get<Self::BlockNumber>;
+
+        /// Weight information for extrinsics in this pallet
+        type WeightInfo: WeightInfo;
     }
-    return r_id;
-}
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub enum ProposalStatus {
-    Initiated,
-    Approved,
-    Rejected,
-}
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
-pub struct ProposalVotes<AccountId, BlockNumber> {
-    pub votes_for: Vec<AccountId>,
-    pub votes_against: Vec<AccountId>,
-    pub status: ProposalStatus,
-    pub expiry: BlockNumber,
-}
+    // ------------------------------------------------------------------------
+    // Pallet events
+    // ------------------------------------------------------------------------
 
-impl<A: PartialEq, B: PartialOrd + Default> ProposalVotes<A, B> {
-    /// Attempts to mark the proposal as approve or rejected.
-    /// Returns true if the status changes from active.
-    fn try_to_complete(&mut self, threshold: u32, total: u32) -> ProposalStatus {
-        if self.votes_for.len() >= threshold as usize {
-            self.status = ProposalStatus::Approved;
-            ProposalStatus::Approved
-        } else if total >= threshold && self.votes_against.len() as u32 + threshold > total {
-            self.status = ProposalStatus::Rejected;
-            ProposalStatus::Rejected
-        } else {
-            ProposalStatus::Initiated
-        }
-    }
-
-    /// Returns true if the proposal has been rejected or approved, otherwise false.
-    fn is_complete(&self) -> bool {
-        self.status != ProposalStatus::Initiated
-    }
-
-    /// Returns true if `who` has voted for or against the proposal
-    fn has_voted(&self, who: &A) -> bool {
-        self.votes_for.contains(&who) || self.votes_against.contains(&who)
-    }
-
-    /// Return true if the expiry time has been reached
-    fn is_expired(&self, now: B) -> bool {
-        self.expiry <= now
-    }
-}
-
-impl<AccountId, BlockNumber: Default> Default for ProposalVotes<AccountId, BlockNumber> {
-    fn default() -> Self {
-        Self {
-            votes_for: Vec::new(),
-            votes_against: Vec::new(),
-            status: ProposalStatus::Initiated,
-            expiry: BlockNumber::default(),
-        }
-    }
-}
-
-pub trait Config: system::Config {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
-    /// Origin used to administer the pallet
-    type AdminOrigin: EnsureOrigin<Self::Origin>;
-    /// Proposed dispatchable call
-    type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
-    /// The identifier for this chain.
-    /// This must be unique and must not collide with existing IDs within a set of bridged chains.
-    type ChainId: Get<ChainId>;
-
-    type ProposalLifetime: Get<Self::BlockNumber>;
-}
-
-decl_event! {
-    pub enum Event<T> where <T as frame_system::Config>::AccountId {
+    // The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+    #[pallet::event]
+    // The macro generates a function on Pallet to deposit an event
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
         /// Vote threshold has changed (new_threshold)
         RelayerThresholdChanged(u32),
         /// Chain now available for transfers (chain_id)
         ChainWhitelisted(ChainId),
         /// Relayer added to set
-        RelayerAdded(AccountId),
+        RelayerAdded(T::AccountId),
         /// Relayer removed from set
-        RelayerRemoved(AccountId),
+        RelayerRemoved(T::AccountId),
         /// FunglibleTransfer is for relaying fungibles (dest_id, nonce, resource_id, amount, recipient, metadata)
         FungibleTransfer(ChainId, DepositNonce, ResourceId, U256, Vec<u8>),
         /// NonFungibleTransfer is for relaying NFTS (dest_id, nonce, resource_id, token_id, recipient, metadata)
@@ -135,9 +233,9 @@ decl_event! {
         /// GenericTransfer is for a generic data payload (dest_id, nonce, resource_id, metadata)
         GenericTransfer(ChainId, DepositNonce, ResourceId, Vec<u8>),
         /// Vote submitted in favour of proposal
-        VoteFor(ChainId, DepositNonce, AccountId),
+        VoteFor(ChainId, DepositNonce, T::AccountId),
         /// Vot submitted against proposal
-        VoteAgainst(ChainId, DepositNonce, AccountId),
+        VoteAgainst(ChainId, DepositNonce, T::AccountId),
         /// Voting successful for a proposal
         ProposalApproved(ChainId, DepositNonce),
         /// Voting rejected a proposal
@@ -147,10 +245,113 @@ decl_event! {
         /// Execution of call failed
         ProposalFailed(ChainId, DepositNonce),
     }
-}
 
-decl_error! {
-    pub enum Error for Module<T: Config> {
+
+    // ------------------------------------------------------------------------
+    // Pallet storage items
+    // ------------------------------------------------------------------------
+
+    /// All whitelisted chains and their respective transaction counts
+	#[pallet::storage]
+	#[pallet::getter(fn get_chains)]
+	pub(super) type ChainNonces<T: Config> = StorageMap<
+        _, 
+        Blake2_256, 
+        ChainId, 
+        DepositNonce, 
+        OptionQuery
+    >;
+
+    // Default (or initial) value for [`RelayerThreshold`] storage item
+	#[pallet::type_value]
+	pub fn OnRelayerThresholdEmpty<T: Config>() -> u32 {
+		DEFAULT_RELAYER_THRESHOLD
+	}
+
+    /// Number of votes required for a proposal to execute
+	#[pallet::storage]
+	#[pallet::getter(fn get_relayer_threshold)]
+    pub(super) type RelayerThreshold<T: Config> = StorageValue<_, u32, ValueQuery, OnRelayerThresholdEmpty<T>>;
+
+    /// Tracks current relayer set
+	#[pallet::storage]
+	#[pallet::getter(fn get_relayers)]
+    pub(super) type Relayers<T: Config> = StorageMap<
+        _,
+        Blake2_256,
+        T::AccountId,
+        bool,
+        ValueQuery
+    >;
+
+    /// Number of relayers in set
+	#[pallet::storage]
+	#[pallet::getter(fn get_relayer_count)]
+	pub(super) type RelayerCount<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+    /// All known proposals.
+    /// The key is the hash of the call and the deposit ID, to ensure it's unique.
+	#[pallet::storage]
+	#[pallet::getter(fn get_votes)]
+    pub(super) type Votes<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_256,
+        ChainId,
+        Blake2_256,
+        (DepositNonce, T::Proposal),
+        ProposalVotes<T::AccountId, T::BlockNumber>,
+        OptionQuery
+    >;
+    
+    /// Utilized by the bridge software to map resource IDs to actual methods
+	#[pallet::storage]
+	#[pallet::getter(fn get_resources)]
+    pub(super) type Resources<T: Config> = StorageMap<
+        _,
+        Blake2_256,
+        ResourceId,
+        Vec<u8>,
+        OptionQuery
+    >;      
+    
+
+	// ------------------------------------------------------------------------
+	// Pallet genesis configuration
+	// ------------------------------------------------------------------------
+
+	// The genesis configuration type.
+	#[pallet::genesis_config]
+	pub struct GenesisConfig {}
+
+	// The default value for the genesis config type.
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			Self {}
+		}
+	}
+
+	// The build of genesis for the pallet.
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {}
+	}
+
+
+    // ------------------------------------------------------------------------
+    // Pallet lifecycle hooks
+    // ------------------------------------------------------------------------
+    
+    #[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+
+    // ------------------------------------------------------------------------
+    // Pallet errors
+    // ------------------------------------------------------------------------
+
+    #[pallet::error]
+    pub enum Error<T> {
         /// Relayer threshold not set
         ThresholdNotSet,
         /// Provided chain Id is not valid
@@ -182,43 +383,20 @@ decl_error! {
         /// Lifetime of proposal has been exceeded
         ProposalExpired,
     }
-}
 
-decl_storage! {
-    trait Store for Module<T: Config> as ChainBridge {
-        /// All whitelisted chains and their respective transaction counts
-        ChainNonces get(fn chains): map hasher(opaque_blake2_256) ChainId => Option<DepositNonce>;
 
-        /// Number of votes required for a proposal to execute
-        RelayerThreshold get(fn relayer_threshold): u32 = DEFAULT_RELAYER_THRESHOLD;
+	// ------------------------------------------------------------------------
+	// Pallet dispatchable functions
+	// ------------------------------------------------------------------------
 
-        /// Tracks current relayer set
-        pub Relayers get(fn relayers): map hasher(opaque_blake2_256) T::AccountId => bool;
-
-        /// Number of relayers in set
-        pub RelayerCount get(fn relayer_count): u32;
-
-        /// All known proposals.
-        /// The key is the hash of the call and the deposit ID, to ensure it's unique.
-        pub Votes get(fn votes):
-            double_map hasher(opaque_blake2_256) ChainId, hasher(opaque_blake2_256) (DepositNonce, T::Proposal)
-            => Option<ProposalVotes<T::AccountId, T::BlockNumber>>;
-
-        /// Utilized by the bridge software to map resource IDs to actual methods
-        pub Resources get(fn resources):
-            map hasher(opaque_blake2_256) ResourceId => Option<Vec<u8>>
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Config> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        const ChainIdentity: ChainId = T::ChainId::get();
-        const ProposalLifetime: T::BlockNumber = T::ProposalLifetime::get();
-        const BridgeAccountId: T::AccountId = MODULE_ID.into_account();
-
-        fn deposit_event() = default;
+	// Declare Call struct and implement dispatchable (or callable) functions.
+	//
+	// Dispatchable functions are transactions modifying the state of the chain. They
+	// are also called extrinsics are constitute the pallet's public interface.
+	// Note that each parameter used in functions must implement `Clone`, `Debug`,
+	// `Eq`, `PartialEq` and `Codec` traits.
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 
         /// Sets the vote threshold for proposals.
         ///
@@ -228,8 +406,11 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn set_threshold(origin, threshold: u32) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_threshold())]
+        pub fn set_threshold(
+            origin: OriginFor<T>,
+            threshold: u32
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::set_relayer_threshold(threshold)
         }
@@ -239,8 +420,12 @@ decl_module! {
         /// # <weight>
         /// - O(1) write
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn set_resource(origin, id: ResourceId, method: Vec<u8>) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_resource())]
+        pub fn set_resource(
+            origin: OriginFor<T>,
+            id: ResourceId, 
+            method: Vec<u8>
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::register_resource(id, method)
         }
@@ -253,8 +438,11 @@ decl_module! {
         /// # <weight>
         /// - O(1) removal
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn remove_resource(origin, id: ResourceId) -> DispatchResult {
+        #[pallet::weight(<T as Config>::WeightInfo::remove_resource())]
+        pub fn remove_resource(
+            origin: OriginFor<T>,
+            id: ResourceId
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::unregister_resource(id)
         }
@@ -264,8 +452,11 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn whitelist_chain(origin, id: ChainId) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist_chain())]
+        pub fn whitelist_chain(
+            origin: OriginFor<T>,
+            id: ChainId
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::whitelist(id)
         }
@@ -275,8 +466,11 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and insert
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn add_relayer(origin, v: T::AccountId) -> DispatchResult {
+        #[pallet::weight(<T as Config>::WeightInfo::add_relayer())]
+        pub fn add_relayer(
+            origin: OriginFor<T>,
+            v: T::AccountId
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
             Self::register_relayer(v)
         }
@@ -286,10 +480,13 @@ decl_module! {
         /// # <weight>
         /// - O(1) lookup and removal
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn remove_relayer(origin, v: T::AccountId) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::remove_relayer())]
+        pub fn remove_relayer(
+            origin: OriginFor<T>,
+            account_id: T::AccountId
+        ) -> DispatchResult {
             Self::ensure_admin(origin)?;
-            Self::unregister_relayer(v)
+            Self::unregister_relayer(account_id)
         }
 
         /// Commits a vote in favour of the provided proposal.
@@ -300,8 +497,14 @@ decl_module! {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[weight = (call.get_dispatch_info().weight + 195_000_000, call.get_dispatch_info().class, Pays::Yes)]
-        pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Config>::Proposal>) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::acknowledge_proposal(call.get_dispatch_info().weight))]
+        pub fn acknowledge_proposal(
+            origin: OriginFor<T>,
+            nonce: DepositNonce, 
+            src_id: ChainId, 
+            r_id: ResourceId, 
+            call: Box<<T as Config>::Proposal>
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
@@ -315,8 +518,14 @@ decl_module! {
         /// # <weight>
         /// - Fixed, since execution of proposal should not be included
         /// # </weight>
-        #[weight = 195_000_000]
-        pub fn reject_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Config>::Proposal>) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::reject_proposal())]
+        pub fn reject_proposal(
+            origin: OriginFor<T>,
+            nonce: DepositNonce, 
+            src_id: ChainId, 
+            r_id: ResourceId, 
+            call: Box<<T as Config>::Proposal>
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
             ensure!(Self::chain_whitelisted(src_id), Error::<T>::ChainNotWhitelisted);
@@ -333,17 +542,40 @@ decl_module! {
         /// # <weight>
         /// - weight of proposed call, regardless of whether execution is performed
         /// # </weight>
-        #[weight = (prop.get_dispatch_info().weight + 195_000_000, prop.get_dispatch_info().class, Pays::Yes)]
-        pub fn eval_vote_state(origin, nonce: DepositNonce, src_id: ChainId, prop: Box<<T as Config>::Proposal>) -> DispatchResult {
+        #[pallet::weight(<T as pallet::Config>::WeightInfo::eval_vote_state(proposal.get_dispatch_info().weight))]
+        pub fn eval_vote_state(
+            origin: OriginFor<T>,
+            nonce: DepositNonce, 
+            src_id: ChainId, 
+            proposal: Box<<T as Config>::Proposal>
+        ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            Self::try_resolve_proposal(nonce, src_id, prop)
+            Self::try_resolve_proposal(nonce, src_id, proposal)
         }
     }
-}
+} // end of 'pallet' module
 
-impl<T: Config> Module<T> {
+
+// ----------------------------------------------------------------------------
+// Pallet implementation block
+// ----------------------------------------------------------------------------
+
+// Chain bridge pallet implementation block.
+//
+// This main implementation block contains two categories of functions, namely:
+// - Public functions: These are functions that are `pub` and generally fall into
+//   inspector functions that do not write to storage and operation functions that do.
+// - Private functions: These are private helpers or utilities that cannot be called
+//   from other pallets.
+impl<T: Config> Pallet<T> {
     // *** Utility methods ***
+
+    /// Provides an AccountId for the pallet.
+    /// This is used both as an origin check and deposit/withdrawal account.
+	pub fn account_id() -> T::AccountId {
+		T::PalletId::get().into_account()
+	}
 
     pub fn ensure_admin(o: T::Origin) -> DispatchResult {
         T::AdminOrigin::try_origin(o)
@@ -354,29 +586,24 @@ impl<T: Config> Module<T> {
 
     /// Checks if who is a relayer
     pub fn is_relayer(who: &T::AccountId) -> bool {
-        Self::relayers(who)
+        Self::get_relayers(who)
     }
 
-    /// Provides an AccountId for the pallet.
-    /// This is used both as an origin check and deposit/withdrawal account.
-    pub fn account_id() -> T::AccountId {
-        MODULE_ID.into_account()
-    }
 
     /// Asserts if a resource is registered
     pub fn resource_exists(id: ResourceId) -> bool {
-        return Self::resources(id) != None;
+        return Self::get_resources(id) != None;
     }
 
     /// Checks if a chain exists as a whitelisted destination
     pub fn chain_whitelisted(id: ChainId) -> bool {
-        return Self::chains(id) != None;
+        return Self::get_chains(id) != None;
     }
 
     /// Increments the deposit nonce for the specified chain ID
     fn bump_nonce(id: ChainId) -> DepositNonce {
-        let nonce = Self::chains(id).unwrap_or_default() + 1;
-        <ChainNonces>::insert(id, nonce);
+        let nonce = Self::get_chains(id).unwrap_or_default() + 1;
+        <ChainNonces<T>>::insert(id, nonce);
         nonce
     }
 
@@ -385,20 +612,20 @@ impl<T: Config> Module<T> {
     /// Set a new voting threshold
     pub fn set_relayer_threshold(threshold: u32) -> DispatchResult {
         ensure!(threshold > 0, Error::<T>::InvalidThreshold);
-        <RelayerThreshold>::put(threshold);
-        Self::deposit_event(RawEvent::RelayerThresholdChanged(threshold));
+        <RelayerThreshold<T>>::put(threshold);
+        Self::deposit_event(Event::RelayerThresholdChanged(threshold));
         Ok(())
     }
 
     /// Register a method for a resource Id, enabling associated transfers
     pub fn register_resource(id: ResourceId, method: Vec<u8>) -> DispatchResult {
-        <Resources>::insert(id, method);
+        <Resources<T>>::insert(id, method);
         Ok(())
     }
 
     /// Removes a resource ID, disabling associated transfer
     pub fn unregister_resource(id: ResourceId) -> DispatchResult {
-        <Resources>::remove(id);
+        <Resources<T>>::remove(id);
         Ok(())
     }
 
@@ -411,8 +638,8 @@ impl<T: Config> Module<T> {
             !Self::chain_whitelisted(id),
             Error::<T>::ChainAlreadyWhitelisted
         );
-        <ChainNonces>::insert(&id, 0);
-        Self::deposit_event(RawEvent::ChainWhitelisted(id));
+        <ChainNonces<T>>::insert(&id, 0);
+        Self::deposit_event(Event::ChainWhitelisted(id));
         Ok(())
     }
 
@@ -423,9 +650,9 @@ impl<T: Config> Module<T> {
             Error::<T>::RelayerAlreadyExists
         );
         <Relayers<T>>::insert(&relayer, true);
-        <RelayerCount>::mutate(|i| *i += 1);
+        <RelayerCount<T>>::mutate(|i| *i += 1);
 
-        Self::deposit_event(RawEvent::RelayerAdded(relayer));
+        Self::deposit_event(Event::RelayerAdded(relayer));
         Ok(())
     }
 
@@ -433,8 +660,8 @@ impl<T: Config> Module<T> {
     pub fn unregister_relayer(relayer: T::AccountId) -> DispatchResult {
         ensure!(Self::is_relayer(&relayer), Error::<T>::RelayerInvalid);
         <Relayers<T>>::remove(&relayer);
-        <RelayerCount>::mutate(|i| *i -= 1);
-        Self::deposit_event(RawEvent::RelayerRemoved(relayer));
+        <RelayerCount<T>>::mutate(|i| *i -= 1);
+        Self::deposit_event(Event::RelayerRemoved(relayer));
         Ok(())
     }
 
@@ -465,10 +692,10 @@ impl<T: Config> Module<T> {
 
         if in_favour {
             votes.votes_for.push(who.clone());
-            Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
+            Self::deposit_event(Event::VoteFor(src_id, nonce, who.clone()));
         } else {
             votes.votes_against.push(who.clone());
-            Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
+            Self::deposit_event(Event::VoteAgainst(src_id, nonce, who.clone()));
         }
 
         <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
@@ -487,7 +714,7 @@ impl<T: Config> Module<T> {
             ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
             ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
 
-            let status = votes.try_to_complete(<RelayerThreshold>::get(), <RelayerCount>::get());
+            let status = votes.try_to_complete(Self::get_relayer_threshold(), Self::get_relayer_count());
             <Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
 
             match status {
@@ -511,7 +738,7 @@ impl<T: Config> Module<T> {
         Self::try_resolve_proposal(nonce, src_id, prop)
     }
 
-    /// Commits a vote against the proposal and cancels it if more than (relayers.len() - threshold)
+    /// Commits a vote against the proposal and cancels it if more than (get_relayers.len() - threshold)
     /// votes against exist.
     fn vote_against(
         who: T::AccountId,
@@ -529,17 +756,17 @@ impl<T: Config> Module<T> {
         nonce: DepositNonce,
         call: Box<T::Proposal>,
     ) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalApproved(src_id, nonce));
+        Self::deposit_event(Event::ProposalApproved(src_id, nonce));
         call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
             .map(|_| ())
             .map_err(|e| e.error)?;
-        Self::deposit_event(RawEvent::ProposalSucceeded(src_id, nonce));
+        Self::deposit_event(Event::ProposalSucceeded(src_id, nonce));
         Ok(())
     }
 
     /// Cancels a proposal.
     fn cancel_execution(src_id: ChainId, nonce: DepositNonce) -> DispatchResult {
-        Self::deposit_event(RawEvent::ProposalRejected(src_id, nonce));
+        Self::deposit_event(Event::ProposalRejected(src_id, nonce));
         Ok(())
     }
 
@@ -555,7 +782,7 @@ impl<T: Config> Module<T> {
             Error::<T>::ChainNotWhitelisted
         );
         let nonce = Self::bump_nonce(dest_id);
-        Self::deposit_event(RawEvent::FungibleTransfer(
+        Self::deposit_event(Event::FungibleTransfer(
             dest_id,
             nonce,
             resource_id,
@@ -578,7 +805,7 @@ impl<T: Config> Module<T> {
             Error::<T>::ChainNotWhitelisted
         );
         let nonce = Self::bump_nonce(dest_id);
-        Self::deposit_event(RawEvent::NonFungibleTransfer(
+        Self::deposit_event(Event::NonFungibleTransfer(
             dest_id,
             nonce,
             resource_id,
@@ -593,14 +820,14 @@ impl<T: Config> Module<T> {
     pub fn transfer_generic(
         dest_id: ChainId,
         resource_id: ResourceId,
-        metadata: Vec<u8>,
+        metadata: Vec<u8>
     ) -> DispatchResult {
         ensure!(
             Self::chain_whitelisted(dest_id),
             Error::<T>::ChainNotWhitelisted
         );
         let nonce = Self::bump_nonce(dest_id);
-        Self::deposit_event(RawEvent::GenericTransfer(
+        Self::deposit_event(Event::GenericTransfer(
             dest_id,
             nonce,
             resource_id,
@@ -612,13 +839,27 @@ impl<T: Config> Module<T> {
 
 /// Simple ensure origin for the bridge account
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
+
+impl<T: pallet::Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     type Success = T::AccountId;
+
     fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
-        let bridge_id = MODULE_ID.into_account();
+        let bridge_id = T::PalletId::get().into_account();
         o.into().and_then(|o| match o {
-            system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
+            frame_system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
             r => Err(T::Origin::from(r)),
         })
     }
+}
+
+/// Helper function to concatenate a chain ID and some bytes to produce a resource ID.
+/// The common format is (31 bytes unique ID + 1 byte chain ID).
+pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
+    let mut r_id: ResourceId = [0; 32];
+    r_id[31] = chain; // last byte is chain id
+    let range = if id.len() > 31 { 31 } else { id.len() }; // Use at most 31 bytes
+    for i in 0..range {
+        r_id[30 - i] = id[range - 1 - i]; // Ensure left padding for eth compatibility
+    }
+    return r_id;
 }

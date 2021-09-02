@@ -619,7 +619,6 @@ impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     /// ** Should be used for benchmarking only!!! **
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_origin() -> T::Origin {
-        use frame_support::traits::OriginTrait;
         T::Origin::from(
             frame_system::RawOrigin::Signed(<Module<T>>::account_id())
         )

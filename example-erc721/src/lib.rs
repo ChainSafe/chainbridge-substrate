@@ -7,6 +7,7 @@ use frame_support::{
     traits::Get,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
+use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -16,7 +17,7 @@ mod tests;
 
 type TokenId = U256;
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Erc721Token {
     pub id: TokenId,
     pub metadata: Vec<u8>,

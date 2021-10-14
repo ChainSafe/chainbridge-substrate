@@ -17,12 +17,19 @@ const TEST_THRESHOLD: u32 = 2;
 
 fn make_remark_proposal(hash: H256) -> Call {
     let resource_id = HashId::get();
-    Call::Example(crate::Call::remark(hash, resource_id))
+    Call::Example(crate::Call::remark {
+        hash,
+        _r_id: resource_id,
+    })
 }
 
 fn make_transfer_proposal(to: u64, amount: u64) -> Call {
     let resource_id = HashId::get();
-    Call::Example(crate::Call::transfer(to, amount.into(), resource_id))
+    Call::Example(crate::Call::transfer {
+        to,
+        amount: amount.into(),
+        _r_id: resource_id,
+    })
 }
 
 #[test]
@@ -211,7 +218,7 @@ fn transfer() {
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
-        assert_events(vec![Event::balances(balances::Event::Transfer(
+        assert_events(vec![Event::Balances(balances::Event::Transfer(
             Bridge::account_id(),
             RELAYER_A,
             10,
@@ -333,16 +340,16 @@ fn create_sucessful_transfer_proposal() {
         );
 
         assert_events(vec![
-            Event::bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_A)),
-            Event::bridge(bridge::RawEvent::VoteAgainst(src_id, prop_id, RELAYER_B)),
-            Event::bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_C)),
-            Event::bridge(bridge::RawEvent::ProposalApproved(src_id, prop_id)),
-            Event::balances(balances::Event::Transfer(
+            Event::Bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_A)),
+            Event::Bridge(bridge::RawEvent::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            Event::Bridge(bridge::RawEvent::VoteFor(src_id, prop_id, RELAYER_C)),
+            Event::Bridge(bridge::RawEvent::ProposalApproved(src_id, prop_id)),
+            Event::Balances(balances::Event::Transfer(
                 Bridge::account_id(),
                 RELAYER_A,
                 10,
             )),
-            Event::bridge(bridge::RawEvent::ProposalSucceeded(src_id, prop_id)),
+            Event::Bridge(bridge::RawEvent::ProposalSucceeded(src_id, prop_id)),
         ]);
     })
 }

@@ -7,10 +7,11 @@ use frame_support::{
     ensure,
     traits::{EnsureOrigin, Get},
     weights::{GetDispatchInfo, Pays},
-    Parameter, PalletId,
+    PalletId, Parameter,
 };
 
 use frame_system::{self as system, ensure_root, ensure_signed};
+use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, Dispatchable};
 use sp_runtime::RuntimeDebug;
@@ -40,14 +41,14 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
     return r_id;
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum ProposalStatus {
     Initiated,
     Approved,
     Rejected,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct ProposalVotes<AccountId, BlockNumber> {
     pub votes_for: Vec<AccountId>,
     pub votes_against: Vec<AccountId>,
@@ -615,7 +616,7 @@ impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> T::Origin {
-		T::Origin::from(system::RawOrigin::Signed(MODULE_ID.into_account()))
-	}
+    fn successful_origin() -> T::Origin {
+        T::Origin::from(system::RawOrigin::Signed(MODULE_ID.into_account()))
+    }
 }

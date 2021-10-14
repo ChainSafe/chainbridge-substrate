@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
+use frame_support::{ord_parameter_types, parameter_types, traits::Everything, weights::Weight};
 use frame_system::{self as system};
 use sp_core::hashing::blake2_128;
 use sp_core::H256;
@@ -23,7 +23,6 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = ();
     type Origin = Origin;
     type Call = Call;
     type Index = u64;
@@ -42,6 +41,7 @@ impl frame_system::Config for Test {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type SS58Prefix = ();
@@ -63,6 +63,8 @@ impl pallet_balances::Config for Test {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type MaxLocks = MaxLocks;
+    type MaxReserves = ();
+    type ReserveIdentifier = [u8; 8];
     type WeightInfo = ();
 }
 

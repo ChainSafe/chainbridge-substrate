@@ -23,6 +23,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+    type BaseCallFilter = Everything;
     type Origin = Origin;
     type Call = Call;
     type Index = u64;
@@ -41,7 +42,6 @@ impl frame_system::Config for Test {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
-    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type SS58Prefix = ();

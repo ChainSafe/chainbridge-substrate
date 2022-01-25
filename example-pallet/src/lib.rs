@@ -1,99 +1,171 @@
-// Ensure we're `no_std` when compiling for Wasm.
+#![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use chainbridge as bridge;
-use example_erc721 as erc721;
-use frame_support::traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
-use frame_system::{self as system, ensure_signed};
-use sp_arithmetic::traits::SaturatedConversion;
-use sp_core::U256;
-use sp_std::prelude::*;
+pub use pallet::*;
 
-mod mock;
-mod tests;
+//#[cfg(test)]
+//mod mock;
 
-type ResourceId = bridge::ResourceId;
+//#[cfg(test)]
+//mod tests;
 
-type BalanceOf<T> =
-    <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
-pub trait Config: system::Config + bridge::Config + erc721::Config {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
-    /// Specifies the origin check provided by the bridge for calls that can only be called by the bridge pallet
-    type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+mod types {
+    use crate::Config;
+    use frame_support::traits::Currency;
 
-    /// The currency mechanism.
-    type Currency: Currency<Self::AccountId>;
-
-    /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
-    type HashId: Get<ResourceId>;
-    type NativeTokenId: Get<ResourceId>;
-    type Erc721Id: Get<ResourceId>;
+    pub type ResourceId = chainbridge::ResourceId;
+    pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+        <T as frame_system::Config>::AccountId,
+    >>::Balance;
 }
 
-decl_event! {
-    pub enum Event<T> where
-        <T as frame_system::Config>::Hash,
+#[frame_support::pallet]
+pub mod pallet {
+    use crate::types::BalanceOf;
+    use crate::types::ResourceId;
+    use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::SaturatedConversion;
+    use frame_support::traits::Currency;
+    use frame_support::traits::ExistenceRequirement::AllowDeath;
+    use frame_system::pallet_prelude::*;
+    use sp_core::U256;
+    use sp_std::vec::Vec;
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(_);
+
+    /// Configure the pallet by specifying the parameters and types on which it depends.
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config
+        + chainbridge::Config
+        + pallet_example_erc721::Config
     {
-        Remark(Hash),
-    }
-}
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type Event: From<Event<Self>>
+            + IsType<<Self as frame_system::Config>::Event>;
 
-decl_error! {
-    pub enum Error for Module<T: Config>{
+        /// Specifies the origin check provided by the bridge for calls that can only be called by
+        /// the bridge pallet
+        type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+        /// The currency mechanism
+        type Currency: Currency<Self::AccountId>;
+
+        /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
+        type HashId: Get<ResourceId>;
+        type NativeTokenId: Get<ResourceId>;
+        type Erc721Id: Get<ResourceId>;
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn something)]
+    pub type Something<T> = StorageValue<_, u32>;
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        Remark(<T as frame_system::Config>::Hash),
+    }
+
+    // Errors inform users that something went wrong.
+    #[pallet::error]
+    pub enum Error<T> {
         InvalidTransfer,
     }
-}
 
-decl_module! {
-    pub struct Module<T: Config> for enum Call where origin: T::Origin {
-        const HashId: ResourceId = T::HashId::get();
-        const NativeTokenId: ResourceId = T::NativeTokenId::get();
-        const Erc721Id: ResourceId = T::Erc721Id::get();
-
-        fn deposit_event() = default;
-
-        //
-        // Initiation calls. These start a bridge transfer.
-        //
-
-        /// Transfers an arbitrary hash to a (whitelisted) destination chain.
-        #[weight = 195_000_000]
-        pub fn transfer_hash(origin, hash: T::Hash, dest_id: bridge::ChainId) -> DispatchResult {
+    // Dispatchable functions allows users to interact with the pallet and invoke state changes.
+    // These functions materialize as "extrinsics", which are often compared to transactions.
+    // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// Transfer an arbitrary hash to a (whitelisted) destination chain.
+        #[pallet::weight(10_000)]
+        pub fn transfer_hash(
+            origin: OriginFor<T>,
+            hash: T::Hash,
+            dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
             ensure_signed(origin)?;
 
             let resource_id = T::HashId::get();
             let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <bridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)
+            <chainbridge::Pallet<T>>::transfer_generic(
+                dest_id,
+                resource_id,
+                metadata,
+            )?;
+
+            Ok(())
         }
 
-        /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
-        #[weight = 195_000_000]
-        pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: bridge::ChainId) -> DispatchResult {
+        /// Transfer some amount of the native token to some recipient on a (whitelisted)
+        /// destination chain.
+        #[pallet::weight(10_000)]
+        pub fn transfer_native(
+            origin: OriginFor<T>,
+            amount: BalanceOf<T>,
+            recipient: Vec<u8>,
+            dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-            let bridge_id = <bridge::Module<T>>::account_id();
-            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+            ensure!(
+                <chainbridge::Pallet<T>>::chain_whitelisted(dest_id),
+                Error::<T>::InvalidTransfer
+            );
+
+            let bridge_id = <chainbridge::Pallet<T>>::account_id();
+            T::Currency::transfer(
+                &source,
+                &bridge_id,
+                amount.into(),
+                AllowDeath,
+            )?;
 
             let resource_id = T::NativeTokenId::get();
-            <bridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into::<u128>()))
+            <chainbridge::Pallet<T>>::transfer_fungible(
+                dest_id,
+                resource_id,
+                recipient,
+                U256::from(amount.saturated_into::<u128>()),
+            )?;
+            Ok(())
         }
 
         /// Transfer a non-fungible token (erc721) to a (whitelisted) destination chain.
-        #[weight = 195_000_000]
-        pub fn transfer_erc721(origin, recipient: Vec<u8>, token_id: U256, dest_id: bridge::ChainId) -> DispatchResult {
+        #[pallet::weight(10_000)]
+        pub fn transfer_erc721(
+            origin: OriginFor<T>,
+            recipient: Vec<u8>,
+            token_id: U256,
+            dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-            match <erc721::Module<T>>::tokens(&token_id) {
+            ensure!(
+                <chainbridge::Pallet<T>>::chain_whitelisted(dest_id),
+                Error::<T>::InvalidTransfer
+            );
+            match <pallet_example_erc721::Pallet<T>>::tokens(&token_id) {
                 Some(token) => {
-                    <erc721::Module<T>>::burn_token(source, token_id)?;
+                    <pallet_example_erc721::Pallet<T>>::burn_token(
+                        source, token_id,
+                    )?;
                     let resource_id = T::Erc721Id::get();
-                    let tid: &mut [u8] = &mut[0; 32];
+                    let tid: &mut [u8] = &mut [0; 32];
                     token_id.to_big_endian(tid);
-                    <bridge::Module<T>>::transfer_nonfungible(dest_id, resource_id, tid.to_vec(), recipient, token.metadata)
+                    <chainbridge::Pallet<T>>::transfer_nonfungible(
+                        dest_id,
+                        resource_id,
+                        tid.to_vec(),
+                        recipient,
+                        token.metadata,
+                    )
                 }
-                None => Err(Error::<T>::InvalidTransfer)?
+                None => Err(Error::<T>::InvalidTransfer)?,
             }
         }
 
@@ -102,26 +174,49 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the bridge account as the source
-        #[weight = 195_000_000]
-        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, r_id: ResourceId) -> DispatchResult {
+        #[pallet::weight(10_000)]
+        pub fn transfer(
+            origin: OriginFor<T>,
+            to: T::AccountId,
+            amount: BalanceOf<T>,
+            _r_id: ResourceId,
+        ) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
-            <T as Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+            <T as Config>::Currency::transfer(
+                &source,
+                &to,
+                amount.into(),
+                AllowDeath,
+            )?;
             Ok(())
         }
 
         /// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
-        #[weight = 195_000_000]
-        pub fn remark(origin, hash: T::Hash, r_id: ResourceId) -> DispatchResult {
+        #[pallet::weight(10_000)]
+        pub fn remark(
+            origin: OriginFor<T>,
+            hash: T::Hash,
+            _r_id: ResourceId,
+        ) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
-            Self::deposit_event(RawEvent::Remark(hash));
+            Self::deposit_event(Event::Remark(hash));
             Ok(())
         }
 
         /// Allows the bridge to issue new erc721 tokens
-        #[weight = 195_000_000]
-        pub fn mint_erc721(origin, recipient: T::AccountId, id: U256, metadata: Vec<u8>, r_id: ResourceId) -> DispatchResult {
+        /// Q: Why event include to r_id here when it is not in-used?
+        #[pallet::weight(10_000)]
+        pub fn mint_erc721(
+            origin: OriginFor<T>,
+            recipient: T::AccountId,
+            id: U256,
+            metadata: Vec<u8>,
+            _r_id: ResourceId,
+        ) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
-            <erc721::Module<T>>::mint_token(recipient, id, metadata)?;
+            <pallet_example_erc721::Pallet<T>>::mint_token(
+                recipient, id, metadata,
+            )?;
             Ok(())
         }
     }

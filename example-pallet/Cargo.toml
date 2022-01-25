@@ -1,33 +1,73 @@
 [package]
-name = 'example-pallet'
+name = 'pallet-example'
 version = '0.0.1'
 authors = ['david@chainsafe.io']
 edition = '2018'
 
 [dependencies]
-# third-party dependencies
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.101", optional = true }
+chainbridge = { path = "../chainbridge", default-features = false }
+pallet-example-erc721 = { path = "../example-erc721", default-features = false }
 
-# primitives
-sp-std = { version = "3.0.0", default-features = false }
-sp-runtime = { version = "3.0.0", default-features = false }
-sp-io = { version = "3.0.0", default-features = false }
-sp-core = { version = "3.0.0", default-features = false }
-sp-arithmetic = { version = "3.0.0", default-features = false }
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '2.0.0'
+
+[dependencies.scale-info]
+default-features = false
+features = ['derive']
+version = '1.0'
+
+[dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
+
+[dependencies.sp-std]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
+
+[dependencies.sp-io]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
+
+[dependencies.sp-runtime]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
 
 # frame dependencies
-frame-support = { version = "3.0.0", default-features = false }
-frame-system = { version = "3.0.0", default-features = false }
+[dependencies.frame-support]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
 
-chainbridge = { path = "../chainbridge" , default-features = false}
-example-erc721 = { path = "../example-erc721", default-features = false }
+[dependencies.frame-system]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
 
 [dev-dependencies]
-pallet-balances = { version = "3.0.0", default-features = false }
+
+[dev-dependencies.pallet-balances]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
 
 [build-dependencies]
-wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner" }
+wasm-builder-runner = { version = "2.0.0", package = "substrate-wasm-builder-runner"}
+
 [features]
 default = ["std"]
 std = [
@@ -37,9 +77,8 @@ std = [
 	"sp-runtime/std",
     "sp-io/std",
     "sp-core/std",
-    "sp-arithmetic/std",
 	"frame-support/std",
 	"frame-system/std",
 	"chainbridge/std",
-    "example-erc721/std"
+    "pallet-example-erc721/std",
 ]

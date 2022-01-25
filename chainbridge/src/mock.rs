@@ -1,118 +1,128 @@
-#![cfg(test)]
-
-use super::*;
-
-use frame_support::{assert_ok, ord_parameter_types, parameter_types, weights::Weight};
-use frame_system::{self as system};
+#![deny(warnings)]
+use crate as pallet_chainbridge;
+use crate::ResourceId;
+use frame_support::traits::StorageMapShim;
+use frame_support::{
+    assert_ok, parameter_types, traits::SortedMembers, PalletId,
+};
+use frame_system as system;
+use frame_system::EnsureSignedBy;
+use pallet_chainbridge::types::ChainId;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-    Perbill,
+    traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as bridge, Config};
-pub use pallet_balances as balances;
+type Balance = u64;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
 
-parameter_types! {
-    pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::one();
-    pub const MaxLocks: u32 = 100;
-}
+// Constants definition
+pub(crate) const RELAYER_A: u64 = 0x2;
+pub(crate) const RELAYER_B: u64 = 0x3;
+pub(crate) const RELAYER_C: u64 = 0x4;
+pub(crate) const ENDOWED_BALANCE: u64 = 100_000_000;
+pub(crate) const TEST_THRESHOLD: u32 = 2;
 
-impl frame_system::Config for Test {
-    type BaseCallFilter = ();
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<u64>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type SS58Prefix = ();
-}
-
-parameter_types! {
-    pub const ExistentialDeposit: u64 = 1;
-}
-
-ord_parameter_types! {
-    pub const One: u64 = 1;
-}
-
-impl pallet_balances::Config for Test {
-    type Balance = u64;
-    type DustRemoval = ();
-    type Event = Event;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type MaxLocks = MaxLocks;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const TestChainId: u8 = 5;
-    pub const ProposalLifetime: u64 = 50;
-}
-
-impl Config for Test {
-    type Event = Event;
-    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type Proposal = Call;
-    type ChainId = TestChainId;
-    type ProposalLifetime = ProposalLifetime;
-}
-
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
-
+// Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
     pub enum Test where
         Block = Block,
         NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
+        UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: system::{Module, Call, Event<T>},
-        Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Module, Call, Storage, Event<T>},
+
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Bridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
-// pub const BRIDGE_ID: u64 =
-pub const RELAYER_A: u64 = 0x2;
-pub const RELAYER_B: u64 = 0x3;
-pub const RELAYER_C: u64 = 0x4;
-pub const ENDOWED_BALANCE: u64 = 100_000_000;
-pub const TEST_THRESHOLD: u32 = 2;
+parameter_types! {
+    pub const BlockHashCount: u64 = 250;
+    pub const SS58Prefix: u8 = 42;
+}
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = ModuleId(*b"cb/bridg").into_account();
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
-        .unwrap();
-    pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bridge_id, ENDOWED_BALANCE)],
+// Implement FRAME balances pallet configuration trait for the mock runtime
+impl pallet_balances::Config for Test {
+    type Balance = Balance;
+    type DustRemoval = ();
+    type Event = Event;
+    type ExistentialDeposit = ExistentialDeposit;
+    // https://stackoverflow.com/questions/66511734/how-do-we-use-the-balances-pallet-instead-of-the-system-pallet-to-store-the-bala
+    type AccountStore = StorageMapShim<
+        pallet_balances::Account<Test>,
+        frame_system::Provider<Test>,
+        Self::AccountId,
+        pallet_balances::AccountData<Balance>,
+    >;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+}
+
+impl system::Config for Test {
+    type AccountData = ();
+    type AccountId = u64;
+    type BaseCallFilter = frame_support::traits::Everything;
+    type BlockHashCount = BlockHashCount;
+    type BlockLength = ();
+    type BlockNumber = u64;
+    type BlockWeights = ();
+    type Call = Call;
+    type DbWeight = ();
+    type Event = Event;
+    type Hash = H256;
+    type Hashing = BlakeTwo256;
+    type Header = Header;
+    type Index = u64;
+    type Lookup = IdentityLookup<Self::AccountId>;
+    type OnKilledAccount = ();
+    type OnNewAccount = ();
+    type OnSetCode = ();
+    type Origin = Origin;
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = SS58Prefix;
+    type SystemWeightInfo = ();
+    type Version = ();
+}
+
+// Parameterize default test user identifier (with id 1)
+parameter_types! {
+    pub const TestUserId: u64 = 1;
+    pub const TestChainId: ChainId = 5;
+    pub const ProposalLifetime: u64 = 10;
+    pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+}
+
+impl SortedMembers<u64> for TestUserId {
+    fn sorted_members() -> Vec<u64> {
+        vec![1]
     }
-    .assimilate_storage(&mut t)
-    .unwrap();
-    let mut ext = sp_io::TestExternalities::new(t);
-    ext.execute_with(|| System::set_block_number(1));
-    ext
+}
+
+// Parameterize FRAME balances pallet
+parameter_types! {
+    pub const ExistentialDeposit: u64 = 1;
+}
+
+impl pallet_chainbridge::Config for Test {
+    type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
+    type ChainId = TestChainId;
+    type Event = Event;
+    type PalletId = ChainBridgePalletId;
+    type Proposal = Call;
+    type ProposalLifetime = ProposalLifetime;
+}
+
+// Build genesis storage according to the mock runtime.
+pub fn new_test_ext() -> sp_io::TestExternalities {
+    system::GenesisConfig::default()
+        .build_storage::<Test>()
+        .unwrap()
+        .into()
 }
 
 pub fn new_test_ext_initialized(
@@ -141,14 +151,16 @@ pub fn new_test_ext_initialized(
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Module::<Test>::events()
+    let mut actual: Vec<Event> = system::Pallet::<Test>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
+    dbg!(&actual);
 
     expected.reverse();
 
     for evt in expected {
+        dbg!(&evt);
         let next = actual.pop().expect("event expected");
         assert_eq!(next, evt.into(), "Events don't match (actual,expected)");
     }

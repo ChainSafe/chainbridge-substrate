@@ -1,6 +1,8 @@
 [workspace]
 members = [
-    "chainbridge",
-    "example-erc721",
-    "example-pallet"
+    'chainbridge',
+    'example-erc721',
+    'example-pallet',
 ]
+[profile.release]
+panic = 'unwind'

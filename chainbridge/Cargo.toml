@@ -2,7 +2,7 @@
 [package]
 name = 'chainbridge'
 version = '0.0.3'
-authors = ['David Ansermo <david@chainsafe.io>', 'Jovansonlee Cesar <jovansonlee@chainsafe.io']
+authors = ['David Ansermino <david@chainsafe.io>', 'Jovansonlee Cesar <jovansonlee@chainsafe.io']
 homepage = 'https://substrate.io/'
 edition = '2021'
 license = 'Unlicense'

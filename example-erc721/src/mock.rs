@@ -171,3 +171,7 @@ impl TestExternalitiesBuilder {
         TestExternalities::new(storage)
     }
 }
+
+pub fn new_test_ext() -> TestExternalities {
+    TestExternalitiesBuilder::default().build()
+}

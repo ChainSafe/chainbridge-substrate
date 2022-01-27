@@ -1,6 +1,5 @@
 #![deny(warnings)]
 use crate as pallet_chainbridge;
-use crate::ResourceId;
 use frame_support::traits::StorageMapShim;
 use frame_support::{
     assert_ok, parameter_types, traits::SortedMembers, PalletId,
@@ -8,6 +7,7 @@ use frame_support::{
 use frame_system as system;
 use frame_system::EnsureSignedBy;
 use pallet_chainbridge::types::ChainId;
+use pallet_chainbridge::ResourceId;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -15,8 +15,9 @@ use sp_runtime::{
 };
 
 type Balance = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic =
+    frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
+type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
 // Constants definition
 pub(crate) const RELAYER_A: u64 = 0x2;
@@ -27,7 +28,7 @@ pub(crate) const TEST_THRESHOLD: u32 = 2;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-    pub enum Test where
+    pub enum MockRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
@@ -45,15 +46,15 @@ parameter_types! {
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for MockRuntime {
     type Balance = Balance;
     type DustRemoval = ();
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     // https://stackoverflow.com/questions/66511734/how-do-we-use-the-balances-pallet-instead-of-the-system-pallet-to-store-the-bala
     type AccountStore = StorageMapShim<
-        pallet_balances::Account<Test>,
-        frame_system::Provider<Test>,
+        pallet_balances::Account<MockRuntime>,
+        frame_system::Provider<MockRuntime>,
         Self::AccountId,
         pallet_balances::AccountData<Balance>,
     >;
@@ -63,7 +64,7 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
-impl system::Config for Test {
+impl system::Config for MockRuntime {
     type AccountData = ();
     type AccountId = u64;
     type BaseCallFilter = frame_support::traits::Everything;
@@ -108,7 +109,7 @@ parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_chainbridge::Config for Test {
+impl pallet_chainbridge::Config for MockRuntime {
     type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
     type ChainId = TestChainId;
     type Event = Event;
@@ -120,7 +121,7 @@ impl pallet_chainbridge::Config for Test {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
     system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage::<MockRuntime>()
         .unwrap()
         .into()
 }
@@ -151,7 +152,7 @@ pub fn new_test_ext_initialized(
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Pallet::<Test>::events()
+    let mut actual: Vec<Event> = system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();

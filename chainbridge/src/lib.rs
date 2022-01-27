@@ -1,12 +1,16 @@
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::pallet_prelude::EnsureOrigin;
-use frame_support::sp_runtime::traits::AccountIdConversion;
-use frame_support::traits::Get;
+use frame_support::{
+    pallet_prelude::EnsureOrigin,
+    sp_runtime::traits::AccountIdConversion,
+    traits::Get,
+};
 pub use pallet::*;
-pub use types::ChainId;
-pub use types::ResourceId;
+pub use types::{
+    ChainId,
+    ResourceId,
+};
 pub mod types;
 
 #[cfg(test)]
@@ -22,12 +26,19 @@ mod benchmarking;
 pub mod pallet {
     use super::*;
     use crate::types::{
-        ChainId, DepositNonce, ProposalStatus, ProposalVotes, ResourceId,
+        ChainId,
+        DepositNonce,
+        ProposalStatus,
+        ProposalVotes,
+        ResourceId,
     };
     use codec::EncodeLike;
     use frame_support::{
-        dispatch::Dispatchable, inherent::*, pallet_prelude::*,
-        sp_runtime::traits::AccountIdConversion, weights::GetDispatchInfo,
+        dispatch::Dispatchable,
+        inherent::*,
+        pallet_prelude::*,
+        sp_runtime::traits::AccountIdConversion,
+        weights::GetDispatchInfo,
         PalletId,
     };
     use frame_system::pallet_prelude::*;
@@ -701,13 +712,16 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     type Success = T::AccountId;
+
     fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
         let bridge_id = T::PalletId::get().into_account();
-        o.into().and_then(|o| match o {
-            frame_system::RawOrigin::Signed(who) if who == bridge_id => {
-                Ok(bridge_id)
+        o.into().and_then(|o| {
+            match o {
+                frame_system::RawOrigin::Signed(who) if who == bridge_id => {
+                    Ok(bridge_id)
+                }
+                r => Err(T::Origin::from(r)),
             }
-            r => Err(T::Origin::from(r)),
         })
     }
 

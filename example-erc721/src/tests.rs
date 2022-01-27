@@ -1,13 +1,24 @@
 #![cfg(test)]
 
-use crate::mock::{
-    new_test_ext, Erc721, MockRuntime, Origin, USER_A, USER_B, USER_C,
+use crate::{
+    mock::{
+        new_test_ext,
+        Erc721,
+        MockRuntime,
+        Origin,
+        USER_A,
+        USER_B,
+        USER_C,
+    },
+    types::Erc721Token,
+    Error,
+    TokenOwner,
+    Tokens,
 };
-use crate::types::Erc721Token;
-use crate::Error;
-use crate::TokenOwner;
-use crate::Tokens;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{
+    assert_noop,
+    assert_ok,
+};
 use sp_core::U256;
 
 #[test]

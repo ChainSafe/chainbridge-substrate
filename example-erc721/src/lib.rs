@@ -14,11 +14,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 pub mod types {
-    use codec::{Decode, Encode};
+    use codec::{
+        Decode,
+        Encode,
+    };
     use scale_info::TypeInfo;
     use sp_core::U256;
     use sp_runtime::RuntimeDebug;
@@ -57,8 +57,13 @@ mod traits {
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::traits::WeightInfo;
-    use crate::types::{Erc721Token, TokenId};
+    use crate::{
+        traits::WeightInfo,
+        types::{
+            Erc721Token,
+            TokenId,
+        },
+    };
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_core::U256;

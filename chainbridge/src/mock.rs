@@ -1,17 +1,27 @@
 #![deny(warnings)]
 use crate as pallet_chainbridge;
-use frame_support::traits::StorageMapShim;
 use frame_support::{
-    assert_ok, parameter_types, traits::SortedMembers, PalletId,
+    assert_ok,
+    parameter_types,
+    traits::{
+        SortedMembers,
+        StorageMapShim,
+    },
+    PalletId,
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
-use pallet_chainbridge::types::ChainId;
-use pallet_chainbridge::ResourceId;
+use pallet_chainbridge::{
+    types::ChainId,
+    ResourceId,
+};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{
+        BlakeTwo256,
+        IdentityLookup,
+    },
 };
 
 type Balance = u64;
@@ -47,10 +57,6 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type Event = Event;
-    type ExistentialDeposit = ExistentialDeposit;
     // https://stackoverflow.com/questions/66511734/how-do-we-use-the-balances-pallet-instead-of-the-system-pallet-to-store-the-bala
     type AccountStore = StorageMapShim<
         pallet_balances::Account<MockRuntime>,
@@ -58,10 +64,14 @@ impl pallet_balances::Config for MockRuntime {
         Self::AccountId,
         pallet_balances::AccountData<Balance>,
     >;
-    type WeightInfo = ();
+    type Balance = Balance;
+    type DustRemoval = ();
+    type Event = Event;
+    type ExistentialDeposit = ExistentialDeposit;
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type WeightInfo = ();
 }
 
 impl system::Config for MockRuntime {

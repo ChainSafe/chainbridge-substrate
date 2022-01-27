@@ -9,9 +9,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 mod types {
     use crate::Config;
     use frame_support::traits::Currency;
@@ -24,12 +21,18 @@ mod types {
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::types::BalanceOf;
-    use crate::types::ResourceId;
-    use frame_support::pallet_prelude::*;
-    use frame_support::sp_runtime::SaturatedConversion;
-    use frame_support::traits::Currency;
-    use frame_support::traits::ExistenceRequirement::AllowDeath;
+    use crate::types::{
+        BalanceOf,
+        ResourceId,
+    };
+    use frame_support::{
+        pallet_prelude::*,
+        sp_runtime::SaturatedConversion,
+        traits::{
+            Currency,
+            ExistenceRequirement::AllowDeath,
+        },
+    };
     use frame_system::pallet_prelude::*;
     use sp_core::U256;
     use sp_std::vec::Vec;

@@ -1,18 +1,42 @@
 #![cfg(test)]
 
 use crate as pallet_example;
-use crate::mock;
-use crate::mock::{
-    Balances, Bridge, Call, Erc721, Erc721Id, Example, HashId, MockRuntime,
-    NativeTokenId, Origin, ProposalLifetime, ENDOWED_BALANCE, RELAYER_A,
-    RELAYER_B, RELAYER_C,
+use crate::{
+    mock,
+    mock::{
+        Balances,
+        Bridge,
+        Call,
+        Erc721,
+        Erc721Id,
+        Example,
+        HashId,
+        MockRuntime,
+        NativeTokenId,
+        Origin,
+        ProposalLifetime,
+        ENDOWED_BALANCE,
+        RELAYER_A,
+        RELAYER_B,
+        RELAYER_C,
+    },
 };
-use chainbridge::types::{ProposalStatus, ProposalVotes};
+use chainbridge::types::{
+    ProposalStatus,
+    ProposalVotes,
+};
 use codec::Encode;
-use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{
+    assert_noop,
+    assert_ok,
+    dispatch::DispatchError,
+};
 use pallet_example_erc721::types::Erc721Token;
-use sp_core::{blake2_256, H256, U256};
+use sp_core::{
+    blake2_256,
+    H256,
+    U256,
+};
 
 const TEST_THRESHOLD: u32 = 2;
 

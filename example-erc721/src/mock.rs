@@ -9,13 +9,25 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_example_erc721, traits::WeightInfo};
-use frame_support::{parameter_types, weights::Weight};
-use sp_core::{blake2_128, H256};
+use crate::{
+    self as pallet_example_erc721,
+    traits::WeightInfo,
+};
+use frame_support::{
+    parameter_types,
+    weights::Weight,
+};
+use sp_core::{
+    blake2_128,
+    H256,
+};
 use sp_io::TestExternalities;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{
+        BlakeTwo256,
+        IdentityLookup,
+    },
     Perbill,
 };
 
@@ -78,29 +90,29 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
+    type AccountData = pallet_balances::AccountData<u64>;
+    type AccountId = u64;
     type BaseCallFilter = frame_support::traits::Everything;
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
+    type BlockHashCount = BlockHashCount;
+    type BlockLength = ();
     type BlockNumber = u64;
+    type BlockWeights = ();
+    type Call = Call;
+    type DbWeight = ();
+    type Event = Event;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<u64>;
-    type OnNewAccount = ();
+    type Index = u64;
+    type Lookup = IdentityLookup<Self::AccountId>;
     type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type SS58Prefix = ();
+    type OnNewAccount = ();
     type OnSetCode = ();
+    type Origin = Origin;
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
+    type SystemWeightInfo = ();
+    type Version = ();
 }
 
 // Parameterize FRAME balances pallet
@@ -110,15 +122,15 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
+    type AccountStore = System;
     type Balance = Balance;
     type DustRemoval = ();
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type WeightInfo = ();
 }
 
 // Parameterize ERC721 pallet

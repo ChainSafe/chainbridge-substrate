@@ -1,15 +1,27 @@
 #![deny(warnings)]
 #![cfg(test)]
 
-use crate::{self as pallet_example, Config};
-use frame_support::PalletId;
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
+use crate::{
+    self as pallet_example,
+    Config,
+};
+use frame_support::{
+    ord_parameter_types,
+    parameter_types,
+    weights::Weight,
+    PalletId,
+};
 use pallet_example_erc721::WeightInfo;
-use sp_core::hashing::blake2_128;
-use sp_core::H256;
+use sp_core::{
+    hashing::blake2_128,
+    H256,
+};
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{
+        BlakeTwo256,
+        IdentityLookup,
+    },
     Perbill,
 };
 
@@ -22,29 +34,29 @@ parameter_types! {
 }
 
 impl frame_system::Config for MockRuntime {
+    type AccountData = pallet_balances::AccountData<u64>;
+    type AccountId = u64;
     type BaseCallFilter = frame_support::traits::Everything;
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
+    type BlockHashCount = BlockHashCount;
+    type BlockLength = ();
     type BlockNumber = u64;
+    type BlockWeights = ();
+    type Call = Call;
+    type DbWeight = ();
+    type Event = Event;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<u64>;
-    type OnNewAccount = ();
+    type Index = u64;
+    type Lookup = IdentityLookup<Self::AccountId>;
     type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type SS58Prefix = ();
+    type OnNewAccount = ();
     type OnSetCode = ();
+    type Origin = Origin;
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
+    type SystemWeightInfo = ();
+    type Version = ();
 }
 
 parameter_types! {
@@ -56,15 +68,15 @@ ord_parameter_types! {
 }
 
 impl pallet_balances::Config for MockRuntime {
+    type AccountStore = System;
     type Balance = u64;
     type DustRemoval = ();
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
     type MaxLocks = MaxLocks;
-    type WeightInfo = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -74,11 +86,11 @@ parameter_types! {
 }
 
 impl chainbridge::Config for MockRuntime {
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type ChainId = TestChainId;
     type Event = Event;
     type PalletId = ChainBridgePalletId;
-    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
-    type ChainId = TestChainId;
     type ProposalLifetime = ProposalLifetime;
 }
 
@@ -110,12 +122,12 @@ impl pallet_example_erc721::Config for MockRuntime {
 }
 
 impl Config for MockRuntime {
-    type Event = Event;
     type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
     type Currency = Balances;
+    type Erc721Id = Erc721Id;
+    type Event = Event;
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
-    type Erc721Id = Erc721Id;
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;

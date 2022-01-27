@@ -1,16 +1,35 @@
 #![deny(warnings)]
 use crate as pallet_chainbridge;
-use frame_support::{assert_noop, assert_ok};
-use pallet_chainbridge::mock;
-use pallet_chainbridge::mock::Bridge;
-use pallet_chainbridge::mock::{
-    assert_events, new_test_ext, new_test_ext_initialized, MockRuntime, Origin,
-    ProposalLifetime, TestChainId, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
-    RELAYER_C, TEST_THRESHOLD,
+use frame_support::{
+    assert_noop,
+    assert_ok,
 };
-use pallet_chainbridge::types::{ProposalStatus, ProposalVotes};
-use pallet_chainbridge::RelayerThreshold;
-use pallet_chainbridge::{derive_resource_id, Error, ResourceId};
+use pallet_chainbridge::{
+    derive_resource_id,
+    mock,
+    mock::{
+        assert_events,
+        new_test_ext,
+        new_test_ext_initialized,
+        Bridge,
+        MockRuntime,
+        Origin,
+        ProposalLifetime,
+        TestChainId,
+        ENDOWED_BALANCE,
+        RELAYER_A,
+        RELAYER_B,
+        RELAYER_C,
+        TEST_THRESHOLD,
+    },
+    types::{
+        ProposalStatus,
+        ProposalVotes,
+    },
+    Error,
+    RelayerThreshold,
+    ResourceId,
+};
 use sp_core::U256;
 
 #[test]

@@ -9,19 +9,15 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use crate::{self as pallet_example_erc721, traits::WeightInfo};
 use frame_support::{parameter_types, weights::Weight};
-
 use sp_core::{blake2_128, H256};
-
 use sp_io::TestExternalities;
-
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
-
-use crate::{self as pallet_example_erc721, traits::WeightInfo};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration

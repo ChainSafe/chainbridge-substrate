@@ -1,9 +1,10 @@
 #![deny(warnings)]
 #![cfg(test)]
 
+use crate::{self as pallet_example, Config};
 use frame_support::PalletId;
 use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
-use frame_system::{self as system};
+use pallet_example_erc721::WeightInfo;
 use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
@@ -11,10 +12,6 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
-
-use crate::{self as pallet_example, Config};
-pub use pallet_balances as balances;
-use pallet_example_erc721::WeightInfo;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -24,7 +21,7 @@ parameter_types! {
     pub const MaxLocks: u32 = 100;
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for MockRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type Origin = Origin;
     type Call = Call;
@@ -58,7 +55,7 @@ ord_parameter_types! {
     pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for MockRuntime {
     type Balance = u64;
     type DustRemoval = ();
     type Event = Event;
@@ -76,7 +73,7 @@ parameter_types! {
     pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 }
 
-impl chainbridge::Config for Test {
+impl chainbridge::Config for MockRuntime {
     type Event = Event;
     type PalletId = ChainBridgePalletId;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
@@ -106,15 +103,15 @@ impl WeightInfo for MockWeightInfo {
     }
 }
 
-impl pallet_example_erc721::Config for Test {
+impl pallet_example_erc721::Config for MockRuntime {
     type Event = Event;
     type Identifier = Erc721Id;
     type WeightInfo = MockWeightInfo;
 }
 
-impl Config for Test {
+impl Config for MockRuntime {
     type Event = Event;
-    type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+    type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
     type Currency = Balances;
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
@@ -126,13 +123,13 @@ pub type UncheckedExtrinsic =
     sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
 frame_support::construct_runtime!(
-    pub enum Test where
+    pub enum MockRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: system::{Pallet, Call, Config, Storage, Event<T>},
-        Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Bridge: chainbridge::{Pallet, Call, Storage, Event<T>},
         Erc721: pallet_example_erc721::{Pallet, Call, Storage, Event<T>},
         Example: pallet_example::{Pallet, Call, Event<T>}
@@ -145,11 +142,11 @@ pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = chainbridge::Pallet::<Test>::account_id();
+    let bridge_id = chainbridge::Pallet::<MockRuntime>::account_id();
     let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage::<MockRuntime>()
         .unwrap();
-    pallet_balances::GenesisConfig::<Test> {
+    pallet_balances::GenesisConfig::<MockRuntime> {
         balances: vec![
             (bridge_id, ENDOWED_BALANCE),
             (RELAYER_A, ENDOWED_BALANCE),
@@ -163,7 +160,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 fn last_event() -> Event {
-    system::Pallet::<Test>::events()
+    frame_system::Pallet::<MockRuntime>::events()
         .pop()
         .map(|e| e.event)
         .expect("Event expected")
@@ -175,7 +172,7 @@ pub fn expect_event<E: Into<Event>>(e: E) {
 
 // Asserts that the event was emitted at some point.
 pub fn event_exists<E: Into<Event>>(e: E) {
-    let actual: Vec<Event> = system::Pallet::<Test>::events()
+    let actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
@@ -193,7 +190,7 @@ pub fn event_exists<E: Into<Event>>(e: E) {
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Pallet::<Test>::events()
+    let mut actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();

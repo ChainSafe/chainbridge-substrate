@@ -3,9 +3,9 @@
 use crate as pallet_example;
 use crate::mock;
 use crate::mock::{
-    assert_events, balances, expect_event, new_test_ext, Balances, Bridge,
-    Call, Erc721, Erc721Id, Example, HashId, NativeTokenId, Origin,
-    ProposalLifetime, Test, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
+    Balances, Bridge, Call, Erc721, Erc721Id, Example, HashId, MockRuntime,
+    NativeTokenId, Origin, ProposalLifetime, ENDOWED_BALANCE, RELAYER_A,
+    RELAYER_B, RELAYER_C,
 };
 use chainbridge::types::{ProposalStatus, ProposalVotes};
 use codec::Encode;
@@ -32,7 +32,7 @@ fn make_transfer_proposal(to: u64, amount: u64) -> Call {
 
 #[test]
 fn transfer_hash() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let dest_chain = 0;
         let resource_id = HashId::get();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
@@ -46,7 +46,7 @@ fn transfer_hash() {
             dest_chain,
         ));
 
-        expect_event(chainbridge::Event::GenericTransfer(
+        mock::expect_event(chainbridge::Event::GenericTransfer(
             dest_chain,
             1,
             resource_id,
@@ -57,7 +57,7 @@ fn transfer_hash() {
 
 #[test]
 fn transfer_native() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let dest_chain = 0;
         let resource_id = NativeTokenId::get();
         let amount: u64 = 100;
@@ -71,7 +71,7 @@ fn transfer_native() {
             dest_chain,
         ));
 
-        expect_event(chainbridge::Event::FungibleTransfer(
+        mock::expect_event(chainbridge::Event::FungibleTransfer(
             dest_chain,
             1,
             resource_id,
@@ -83,7 +83,7 @@ fn transfer_native() {
 
 #[test]
 fn transfer_erc721() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let dest_chain = 0;
         let resource_id = Erc721Id::get();
         let token_id: U256 = 100.into();
@@ -116,7 +116,7 @@ fn transfer_erc721() {
             dest_chain,
         ));
 
-        expect_event(chainbridge::Event::NonFungibleTransfer(
+        mock::expect_event(chainbridge::Event::NonFungibleTransfer(
             dest_chain,
             1,
             resource_id,
@@ -136,14 +136,14 @@ fn transfer_erc721() {
                 token_id,
                 dest_chain,
             ),
-            pallet_example::Error::<Test>::InvalidTransfer
+            pallet_example::Error::<MockRuntime>::InvalidTransfer
         );
     })
 }
 
 #[test]
 fn execute_remark() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let proposal = make_remark_proposal(hash.clone());
         let prop_id = 1;
@@ -178,7 +178,7 @@ fn execute_remark() {
 
 #[test]
 fn execute_remark_bad_origin() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let resource_id = HashId::get();
         assert_ok!(Example::remark(
@@ -201,7 +201,7 @@ fn execute_remark_bad_origin() {
 
 #[test]
 fn transfer() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         // Check inital state
         let bridge_id: u64 = Bridge::account_id();
         let resource_id = HashId::get();
@@ -216,7 +216,7 @@ fn transfer() {
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
-        assert_events(vec![mock::Event::Balances(
+        mock::assert_events(vec![mock::Event::Balances(
             pallet_balances::Event::Transfer {
                 from: Bridge::account_id(),
                 to: RELAYER_A,
@@ -228,7 +228,7 @@ fn transfer() {
 
 #[test]
 fn mint_erc721() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let token_id = U256::from(99);
         let recipient = RELAYER_A;
         let metadata = vec![1, 1, 1, 1];
@@ -261,14 +261,14 @@ fn mint_erc721() {
                 metadata.clone(),
                 resource_id,
             ),
-            pallet_example_erc721::Error::<Test>::TokenAlreadyExists
+            pallet_example_erc721::Error::<MockRuntime>::TokenAlreadyExists
         );
     })
 }
 
 #[test]
 fn create_sucessful_transfer_proposal() {
-    new_test_ext().execute_with(|| {
+    mock::new_test_ext().execute_with(|| {
         let prop_id = 1;
         let src_id = 1;
         let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
@@ -346,7 +346,7 @@ fn create_sucessful_transfer_proposal() {
             ENDOWED_BALANCE - 10
         );
 
-        assert_events(vec![
+        mock::assert_events(vec![
             mock::Event::Bridge(chainbridge::Event::VoteFor(
                 src_id, prop_id, RELAYER_A,
             )),
@@ -359,7 +359,7 @@ fn create_sucessful_transfer_proposal() {
             mock::Event::Bridge(chainbridge::Event::ProposalApproved(
                 src_id, prop_id,
             )),
-            mock::Event::Balances(balances::Event::Transfer {
+            mock::Event::Balances(pallet_balances::Event::Transfer {
                 from: Bridge::account_id(),
                 to: RELAYER_A,
                 amount: 10,

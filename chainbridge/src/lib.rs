@@ -6,7 +6,14 @@ use frame_support::{
     sp_runtime::traits::AccountIdConversion,
     traits::Get,
 };
-pub use pallet::*;
+pub use pallet::{
+    Config,
+    Error,
+    Event,
+    Pallet,
+    RelayerThreshold,
+    *,
+};
 pub use types::{
     ChainId,
     ResourceId,
@@ -24,7 +31,6 @@ mod benchmarking;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
     use crate::types::{
         ChainId,
         DepositNonce,
@@ -35,7 +41,6 @@ pub mod pallet {
     use codec::EncodeLike;
     use frame_support::{
         dispatch::Dispatchable,
-        inherent::*,
         pallet_prelude::*,
         sp_runtime::traits::AccountIdConversion,
         weights::GetDispatchInfo,

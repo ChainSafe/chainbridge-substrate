@@ -1,7 +1,14 @@
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use pallet::*;
+pub use pallet::{
+    Call,
+    Config,
+    Error,
+    Event,
+    Pallet,
+    *,
+};
 
 #[cfg(test)]
 mod mock;
@@ -10,7 +17,7 @@ mod mock;
 mod tests;
 
 mod types {
-    use crate::Config;
+    use crate::pallet::Config;
     use frame_support::traits::Currency;
 
     pub type ResourceId = chainbridge::ResourceId;
@@ -64,10 +71,6 @@ pub mod pallet {
         type NativeTokenId: Get<ResourceId>;
         type Erc721Id: Get<ResourceId>;
     }
-
-    #[pallet::storage]
-    #[pallet::getter(fn something)]
-    pub type Something<T> = StorageValue<_, u32>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]

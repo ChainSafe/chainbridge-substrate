@@ -4,10 +4,7 @@ use codec::{
     Decode,
     Encode,
 };
-use frame_support::{
-    inherent::*,
-    pallet_prelude::*,
-};
+use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_std::prelude::*;
 
@@ -22,7 +19,6 @@ pub enum ProposalStatus {
     Rejected,
 }
 
-//TODO: Why do I need to use TypeInfo now? when the old version or PR#94 dont have to use it?
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct ProposalVotes<AccountId, BlockNumber> {
     pub votes_for: Vec<AccountId>,

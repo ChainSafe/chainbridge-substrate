@@ -5,7 +5,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(warnings)]
 
-pub use pallet::*;
+pub use pallet::{
+    Call,
+    Config,
+    Error,
+    Event,
+    Pallet,
+    TokenOwner,
+    Tokens,
+    *,
+};
 pub use traits::WeightInfo;
 
 #[cfg(test)]

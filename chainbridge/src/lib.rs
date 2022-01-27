@@ -49,6 +49,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use scale_info::prelude::boxed::Box;
     use sp_core::U256;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config: frame_system::Config {

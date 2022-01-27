@@ -104,7 +104,7 @@ impl system::Config for MockRuntime {
 parameter_types! {
     pub const TestUserId: u64 = 1;
     pub const TestChainId: ChainId = 5;
-    pub const ProposalLifetime: u64 = 10;
+    pub const ProposalLifetime: u64 = 50;
     pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 }
 
@@ -128,12 +128,20 @@ impl pallet_chainbridge::Config for MockRuntime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-// Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    system::GenesisConfig::default()
+    let bridge_id = Bridge::account_id();
+    let mut t = frame_system::GenesisConfig::default()
         .build_storage::<MockRuntime>()
-        .unwrap()
-        .into()
+        .unwrap();
+    pallet_balances::GenesisConfig::<MockRuntime> {
+        balances: vec![(bridge_id, ENDOWED_BALANCE)],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+    let mut ext = sp_io::TestExternalities::new(t);
+    // Note: when block_number is not set, the events will not be stored
+    ext.execute_with(|| System::set_block_number(1));
+    ext
 }
 
 pub fn new_test_ext_initialized(

@@ -83,10 +83,16 @@ pub mod pallet {
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
+    #[pallet::type_value]
+    pub fn DefaultRelayerThreshold() -> u32 {
+        1
+    }
+
     #[pallet::storage]
     #[pallet::getter(fn relayer_threshold)]
     /// Number of votes required for a proposal to execute
-    pub type RelayerThreshold<T: Config> = StorageValue<_, u32, ValueQuery>;
+    pub type RelayerThreshold<T: Config> =
+        StorageValue<_, u32, ValueQuery, DefaultRelayerThreshold>;
 
     /// Utilized by the bridge software to map resource IDs to actual methods
     #[pallet::storage]
@@ -235,7 +241,6 @@ pub mod pallet {
             origin: OriginFor<T>,
             threshold: u32,
         ) -> DispatchResult {
-            log::info!("--->>>> Threshold is now set to: {}", threshold);
             Self::ensure_admin(origin)?;
             Self::set_relayer_threshold(threshold)?;
             Ok(())
@@ -715,6 +720,7 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 
 /// Simple ensure origin for the bridge account
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
+
 impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     type Success = T::AccountId;
 

@@ -1,7 +1,5 @@
-#![allow(warnings)]
+#![deny(warnings)]
 #![cfg(test)]
-
-use super::*;
 
 use frame_support::PalletId;
 use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
@@ -10,12 +8,11 @@ use sp_core::hashing::blake2_128;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
 
 use crate::{self as pallet_example, Config};
-use chainbridge as bridge;
 pub use pallet_balances as balances;
 use pallet_example_erc721::WeightInfo;
 
@@ -79,7 +76,7 @@ parameter_types! {
     pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 }
 
-impl bridge::Config for Test {
+impl chainbridge::Config for Test {
     type Event = Event;
     type PalletId = ChainBridgePalletId;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
@@ -89,9 +86,9 @@ impl bridge::Config for Test {
 }
 
 parameter_types! {
-    pub HashId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"hash"));
-    pub NativeTokenId: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"DAV"));
-    pub Erc721Id: bridge::ResourceId = bridge::derive_resource_id(1, &blake2_128(b"NFT"));
+    pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"DAV"));
+    pub Erc721Id: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"NFT"));
 }
 
 pub struct MockWeightInfo;
@@ -117,7 +114,7 @@ impl pallet_example_erc721::Config for Test {
 
 impl Config for Test {
     type Event = Event;
-    type BridgeOrigin = bridge::EnsureBridge<Test>;
+    type BridgeOrigin = chainbridge::EnsureBridge<Test>;
     type Currency = Balances;
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
@@ -136,7 +133,7 @@ frame_support::construct_runtime!(
     {
         System: system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Bridge: bridge::{Pallet, Call, Storage, Event<T>},
+        Bridge: chainbridge::{Pallet, Call, Storage, Event<T>},
         Erc721: pallet_example_erc721::{Pallet, Call, Storage, Event<T>},
         Example: pallet_example::{Pallet, Call, Event<T>}
     }
@@ -166,7 +163,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 fn last_event() -> Event {
-    system::Module::<Test>::events()
+    system::Pallet::<Test>::events()
         .pop()
         .map(|e| e.event)
         .expect("Event expected")
@@ -178,7 +175,7 @@ pub fn expect_event<E: Into<Event>>(e: E) {
 
 // Asserts that the event was emitted at some point.
 pub fn event_exists<E: Into<Event>>(e: E) {
-    let actual: Vec<Event> = system::Module::<Test>::events()
+    let actual: Vec<Event> = system::Pallet::<Test>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
@@ -196,7 +193,7 @@ pub fn event_exists<E: Into<Event>>(e: E) {
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Module::<Test>::events()
+    let mut actual: Vec<Event> = system::Pallet::<Test>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();

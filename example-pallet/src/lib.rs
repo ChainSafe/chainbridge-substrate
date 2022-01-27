@@ -6,8 +6,8 @@ pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -179,7 +179,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             to: T::AccountId,
             amount: BalanceOf<T>,
-            _r_id: ResourceId,
+            _resource_id: ResourceId,
         ) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             <T as Config>::Currency::transfer(
@@ -196,7 +196,7 @@ pub mod pallet {
         pub fn remark(
             origin: OriginFor<T>,
             hash: T::Hash,
-            _r_id: ResourceId,
+            _resource_id: ResourceId,
         ) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(Event::Remark(hash));
@@ -211,7 +211,7 @@ pub mod pallet {
             recipient: T::AccountId,
             id: U256,
             metadata: Vec<u8>,
-            _r_id: ResourceId,
+            _resource_id: ResourceId,
         ) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             <pallet_example_erc721::Pallet<T>>::mint_token(

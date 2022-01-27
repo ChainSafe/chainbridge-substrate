@@ -1,4 +1,4 @@
-#![allow(warnings)]
+#![deny(warnings)]
 
 //! Mocking runtime for testing the Substrate/Ethereum example ERC721 pallet.
 //!

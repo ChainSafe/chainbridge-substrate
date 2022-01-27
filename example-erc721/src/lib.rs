@@ -17,7 +17,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod types {
+pub mod types {
     use codec::{Decode, Encode};
     use scale_info::TypeInfo;
     use sp_core::U256;

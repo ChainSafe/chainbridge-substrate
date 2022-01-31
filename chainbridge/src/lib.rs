@@ -426,8 +426,7 @@ pub mod pallet {
 
         /// Increments the deposit nonce for the specified chain ID
         fn bump_nonce(id: ChainId) -> DepositNonce {
-            //TODO: use saturating_add here
-            let nonce = Self::chains(id).unwrap_or_default() + 1;
+            let nonce = Self::chains(id).unwrap_or_default().saturating_add(1);
             <ChainNonces<T>>::insert(id, Some(nonce));
             nonce
         }
@@ -478,8 +477,7 @@ pub mod pallet {
                 Error::<T>::RelayerAlreadyExists
             );
             <Relayers<T>>::insert(&relayer, true);
-            //TODO: use saturating_add
-            <RelayerCount<T>>::mutate(|i| *i += 1);
+            <RelayerCount<T>>::mutate(|i| *i = i.saturating_add(1));
             Self::deposit_event(Event::RelayerAdded(relayer));
             Ok(())
         }
@@ -488,8 +486,7 @@ pub mod pallet {
         pub fn unregister_relayer(relayer: T::AccountId) -> DispatchResult {
             ensure!(Self::is_relayer(&relayer), Error::<T>::RelayerInvalid);
             <Relayers<T>>::remove(&relayer);
-            //TODO: use saturating_sub
-            <RelayerCount<T>>::mutate(|i| *i -= 1);
+            <RelayerCount<T>>::mutate(|i| *i = i.saturating_sub(1));
             Self::deposit_event(Event::RelayerRemoved(relayer));
             Ok(())
         }

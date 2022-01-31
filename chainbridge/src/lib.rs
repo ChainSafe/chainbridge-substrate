@@ -1,3 +1,16 @@
+// Copyright 2021 ChainSafe Systems
+// SPDX-License-Identifier: GPL-3.0-only
+
+//! # Filecoin Governance Pallet
+//!
+//! This pallet uses a set of AccountIds to identify who
+//! can vote on proposals. Relayers may be added, removed.
+//! There is no bound on how many members may exist in the committee.
+//!
+//! For each block addition proposal, relayers can vote on them.
+//! The pallet will lazily resolve all the proposals.
+//! Admin could also resolve manually.
+//!
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 

@@ -51,7 +51,6 @@ where
 {
     /// Attempts to mark the proposal as approve or rejected.
     /// Returns true if the status changes from active.
-    /// TODO: use saturating_add
     pub(crate) fn try_to_complete(
         &mut self,
         threshold: u32,
@@ -61,7 +60,8 @@ where
             self.status = ProposalStatus::Approved;
             ProposalStatus::Approved
         } else if total >= threshold
-            && self.votes_against.len() as u32 + threshold > total
+            && (self.votes_against.len() as u32).saturating_add(threshold)
+                > total
         {
             self.status = ProposalStatus::Rejected;
             ProposalStatus::Rejected

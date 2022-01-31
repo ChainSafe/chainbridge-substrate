@@ -210,7 +210,6 @@ pub mod pallet {
         }
 
         /// Allows the bridge to issue new erc721 tokens
-        /// Q: Why event include to r_id here when it is not in-used?
         #[pallet::weight(10_000)]
         pub fn mint_erc721(
             origin: OriginFor<T>,

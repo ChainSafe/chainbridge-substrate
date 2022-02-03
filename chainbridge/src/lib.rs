@@ -97,6 +97,7 @@ pub mod pallet {
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
+    /// If there is not default relayer threshold set yet, return the value of 1
     #[pallet::type_value]
     pub fn DefaultRelayerThreshold() -> u32 {
         1

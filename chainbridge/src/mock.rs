@@ -6,10 +6,7 @@ use crate as pallet_chainbridge;
 use frame_support::{
     assert_ok,
     parameter_types,
-    traits::{
-        SortedMembers,
-        StorageMapShim,
-    },
+    traits::SortedMembers,
     PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -59,13 +56,7 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
-    // https://stackoverflow.com/questions/66511734/how-do-we-use-the-balances-pallet-instead-of-the-system-pallet-to-store-the-bala
-    type AccountStore = StorageMapShim<
-        pallet_balances::Account<MockRuntime>,
-        frame_system::Provider<MockRuntime>,
-        Self::AccountId,
-        pallet_balances::AccountData<Balance>,
-    >;
+    type AccountStore = System;
     type Balance = Balance;
     type DustRemoval = ();
     type Event = Event;
@@ -77,7 +68,7 @@ impl pallet_balances::Config for MockRuntime {
 }
 
 impl frame_system::Config for MockRuntime {
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<Balance>;
     type AccountId = u64;
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockHashCount = BlockHashCount;

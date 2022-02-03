@@ -23,6 +23,15 @@ This pallet mimics an ERC721 token contract. It allows for minting, burning and 
 Take a look at [ChainSafe/chainbridge-substrate-chain](https://github.com/ChainSafe/chainbridge-substrate-chain)
 on how the pallets are being used in a node-runtime.
 
+Run the tests using
+```sh
+cargo test --all
+```
+Run the benchmark using
+```sh
+cargo build --features runtime-benchmarks --tests
+```
+
 # ChainSafe Security Policy
 
 ## Reporting a Security Bug

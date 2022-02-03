@@ -6,7 +6,8 @@
 use super::*;
 
 #[allow(unused)]
-use crate::Pallet as Template;
+use crate::Pallet as ChainBridge;
+
 use frame_benchmarking::{
     benchmarks,
     whitelisted_caller,
@@ -14,13 +15,13 @@ use frame_benchmarking::{
 use frame_system::RawOrigin;
 
 benchmarks! {
-    do_something {
+    set_threshold {
         let s in 0 .. 100;
         let caller: T::AccountId = whitelisted_caller();
     }: _(RawOrigin::Signed(caller), s)
     verify {
-        assert_eq!(Something::<T>::get(), Some(s));
+        assert_eq!(RelayerCount::<T>::get(), s);
     }
 
-    impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
+    impl_benchmark_test_suite!(ChainBridge, crate::mock::new_test_ext(), crate::mock::MockRuntime);
 }

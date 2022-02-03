@@ -155,7 +155,10 @@ pub fn new_test_ext_initialized(
     let mut t = new_test_ext();
     t.execute_with(|| {
         // Set and check threshold
-        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD));
+        assert_ok!(Bridge::set_threshold(
+            crate::mock::Origin::root(),
+            TEST_THRESHOLD
+        ));
         assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
         // Add relayers
         assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));

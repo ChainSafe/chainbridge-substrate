@@ -30,6 +30,7 @@ cargo test --all
 Run the benchmark using
 ```sh
 cargo build --features runtime-benchmarks --tests
+cargo test --features runtime-benchmarks --tests
 ```
 
 # ChainSafe Security Policy

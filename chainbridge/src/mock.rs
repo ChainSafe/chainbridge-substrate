@@ -12,7 +12,6 @@ use frame_support::{
     },
     PalletId,
 };
-use frame_system as system;
 use frame_system::EnsureSignedBy;
 use pallet_chainbridge::{
     types::ChainId,
@@ -77,7 +76,7 @@ impl pallet_balances::Config for MockRuntime {
     type WeightInfo = ();
 }
 
-impl system::Config for MockRuntime {
+impl frame_system::Config for MockRuntime {
     type AccountData = ();
     type AccountId = u64;
     type BaseCallFilter = frame_support::traits::Everything;
@@ -176,7 +175,7 @@ pub fn new_test_ext_initialized(
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = system::Pallet::<MockRuntime>::events()
+    let mut actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();

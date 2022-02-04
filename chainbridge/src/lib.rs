@@ -281,7 +281,6 @@ pub mod pallet {
             origin: OriginFor<T>,
             id: ChainId,
         ) -> DispatchResult {
-            log::info!("whitelisting chain_id {:?}", id);
             Self::ensure_admin(origin)?;
             Self::whitelist(id)?;
             Ok(())

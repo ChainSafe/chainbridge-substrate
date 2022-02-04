@@ -125,7 +125,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn relayers)]
     pub type Relayers<T: Config> =
-        StorageMap<_, Blake2_256, T::AccountId, bool, ValueQuery>;
+        StorageMap<_, Blake2_256, T::AccountId, (), OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn relayer_count)]
@@ -406,7 +406,7 @@ pub mod pallet {
 
         /// Checks if who is a relayer
         pub fn is_relayer(who: &T::AccountId) -> bool {
-            Self::relayers(who)
+            <Relayers<T>>::contains_key(who)
         }
 
         /// Provides an AccountId for the pallet.
@@ -477,7 +477,7 @@ pub mod pallet {
                 !Self::is_relayer(&relayer),
                 Error::<T>::RelayerAlreadyExists
             );
-            <Relayers<T>>::insert(&relayer, true);
+            <Relayers<T>>::insert(&relayer, ());
             <RelayerCount<T>>::mutate(|i| *i = i.saturating_add(1));
             Self::deposit_event(Event::RelayerAdded(relayer));
             Ok(())

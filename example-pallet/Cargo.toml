@@ -14,7 +14,7 @@ sp-std = { version = "3.0.0", default-features = false }
 sp-runtime = { version = "3.0.0", default-features = false }
 sp-io = { version = "3.0.0", default-features = false }
 sp-core = { version = "3.0.0", default-features = false }
-sp-arithmetic = { version = "3.0.0", default-features = false }
+sp-arithmetic = { version = "5.0.0", default-features = false }
 
 # frame dependencies
 frame-support = { version = "3.0.0", default-features = false }
